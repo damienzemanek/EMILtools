@@ -18,7 +18,7 @@ namespace EMILtools.Core
     ///   of Hooks and call Unsubscribe on a stable target, even if other objects have subscribed/unsubscribed in the meantime.
     /// - Fluent API Support: Enables the <c>.Sub().Sub()</c> chaining pattern by providing a consistent object to return and operate upon.
     /// </remarks>
-    public sealed class ActionDecorator<T>
+    public sealed class StableAction<T>
     {
         Action<T> _action = delegate { };
         
@@ -30,7 +30,7 @@ namespace EMILtools.Core
     /// <summary>
     /// Non-generic version for simple triggers
     /// </summary>
-    public sealed class ActionDecorator
+    public sealed class StableAction
     {
         Action _action = delegate { };
 

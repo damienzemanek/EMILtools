@@ -6,6 +6,9 @@ namespace EMILtools.Signals
     {
         public interface IStatTag { }
         public struct Speed : IStatTag { }
+        public struct Health : IStatTag { }
+        public struct JumpPower : IStatTag { }
+        public struct Damage : IStatTag { }
     }
 }
 

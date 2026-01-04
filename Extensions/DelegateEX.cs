@@ -12,6 +12,7 @@ namespace EMILtools.Extensions
     public static class DelegateEX
     {
         
+        
         public static bool Contains(this Delegate _delegate, Delegate _this)
         {
             if (_delegate == null) return false;

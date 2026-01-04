@@ -12,34 +12,6 @@ using static EMILtools.Signals.StatTags;
 namespace EMILtools.Signals
 {
     
-        [Serializable]
-        [InlineProperty]
-        public class Ref<T> where T : struct
-        {
-            /// <summary>
-            /// Backing field for the base value, Specifically for the custom drawer
-            /// </summary>
-            [HorizontalGroup("Split", Width = 0.3f)]
-            [SerializeField, HideLabel] [VerticalGroup("Split/Right")] protected T _val;
-            
-            /// <summary>
-            /// Overridable for Intercept and Notify on change
-            /// </summary>
-            protected virtual T val { get => _val; set => _val = value; }
-            
-            /// <summary>
-            /// Public facing getter and setters for the actual value
-            /// </summary>
-            [ShowInInspector]
-            public virtual T Value { get => val; set => val = value;}
-            
-            public virtual ref T ValueRef => ref _val;
-            
-            public Ref(T initialValue) => val = initialValue;
-            public Ref(ref T initialValue) => val = initialValue;
-        }
-    
-        
         /// <summary>
         /// A Multi-configurable event bus variable
         /// - Modifiers are functions that take in the base value and use FuncT T modifiers (that are 
@@ -50,7 +22,7 @@ namespace EMILtools.Signals
         /// <typeparam name="T"></typeparam>
         [Serializable]
         [InlineProperty]
-        public sealed class Stat<T, TTag> : Ref<T>, IStat 
+        public sealed class Stat<T, TTag> : IStat 
             where T : struct
             where TTag : struct, IStatTag
         {
@@ -119,27 +91,8 @@ namespace EMILtools.Signals
                     }
                 }
             }
-            
-            /// <summary>
-            /// Used for INTERCEPTS when changed but before NOTIFY.
-            /// Validates and Mutates the base value when changed to subscribed specifications
-            /// 
-            /// Used for NOTIFY when changed
-            /// (Has nothing to do with Modifiers, except re-calculate them when the base is changed)
-            /// </summary>
-            protected override T val
-            {
-                get => base.val;
-                set
-                {
-                    if (HasIntercepts) value = Intercept(value);
-                    
-                    if (EqualityComparer<T>.Default.Equals(base.val, value)) return;
-                    base.val = value;
-                    if(notifyChanges) Reactions?.Invoke(value);
-                    Calculate(); //Refresh modifiers to new base value for math
-                }
-            }
+
+             ReactiveIntercept<T> ri;
             
             /// <summary>
             /// Used for MODIFIERS to store the final math value
@@ -153,26 +106,23 @@ namespace EMILtools.Signals
             [ShowInInspector, ReadOnly, HideLabel]
             [VerticalGroup("Split/Left")]
             [PropertyOrder(0)]
-            public override T Value
+            public T Value
             {
-                get => (HasModifiers && !blockIntercepts) ? calculated : val;
-                set => val = value;
+                get => (HasModifiers && !blockIntercepts) ? calculated : ri.baseValue;
+                set => ri.Value = value;
             }
 
             // Not initialized here to save on memory, When using lazy initialize
-            private List<ModifierSlot> _modSlots;
-            private List<Func<T, T>> _intercepts;
-            
-            // Access for Configurations
+            List<ModifierSlot> _modSlots;
             public IReadOnlyList<ModifierSlot> ModSlots => _modSlots;
-            public IReadOnlyList<Func<T, T>> Intercepts => _intercepts;
-            public event Action<T> Reactions; //Kept as event so outside scripts can't invoke it directly
-            
-            
             bool HasModifiers => _modSlots != null && _modSlots.Count > 0;
-            bool HasIntercepts => _intercepts != null && _intercepts.Count > 0;
 
-            public Stat(T initialValue) : base(initialValue) => Calculate();
+            public Stat(T initialValue)
+            {
+                ri = new ReactiveIntercept<T>(initialValue);
+                ri += _ => { Calculate(); }; //putting Calculate(); in { } forces a void return type (for Action<T>)
+                Calculate();
+            }
             
             // Settings
             [VerticalGroup("Split/Right")]
@@ -196,19 +146,13 @@ namespace EMILtools.Signals
             
             T Calculate()
             {
-                if (!HasModifiers) return val;
-                T beingModified = _modSlots.ApplyAll(val);
-                Debug.Log("Old calculated value: " + val);
+                if (!HasModifiers) return ri.baseValue;
+                T beingModified = _modSlots.ApplyAll(ri.baseValue);
+                Debug.Log("Old calculated value: " + ri.baseValue);
                 Debug.Log("New calculated value: " + beingModified);
                 return calculated = beingModified;
             }
-
-            T Intercept(T newValue)
-            {
-                for(int i = 0; i < Intercepts.Count; i++) 
-                    newValue = Intercepts[i].Invoke(newValue);
-                return newValue;
-            }
+            
             
             
             //--------------------------------------------------
@@ -267,58 +211,6 @@ namespace EMILtools.Signals
                 Debug.Log($"[Removing Decorator] Decorator Removal Success on hash {hash}");
                 Calculate();
             }
-            
-            
-            //--------------------------------------------------
-            //                  Stat Interecepts
-            //--------------------------------------------------
-
-            /// <summary>
-            /// Intercepts are called before the base value is changed.
-            /// Example: Player looses health, health is clamped to a minimum of 0
-            /// 1st T is the input value, 2nd T is the output value
-            /// </summary>
-            /// <param name="intercept"></param>
-            /// <returns></returns>
-            public Stat<T, TTag> AddIntercept(Func<T, T> intercept)
-            {
-                if(Intercepts == null) _intercepts = new List<Func<T, T>>();
-                if (_intercepts.Contains(intercept)) return this;
-                _intercepts.Add(intercept);
-                RefreshIntercept();
-                return this;
-
-            }
-            
-            public Stat<T, TTag> RemoveIntercept(Func<T, T> intercept)
-            {
-                _intercepts.Remove(intercept);
-                RefreshIntercept();
-                return this;
-            }
-            
-            void RefreshIntercept() => val = val;
-            
-
-            /// <summary>
-            /// Reactions events that are called when the base value changes
-            /// Example: Player looses health, an "On Hit" event is called
-            /// </summary>
-            /// <param name="reaction"></param>
-            /// <returns></returns>
-            public Stat<T, TTag> AddReaction(Action<T> reaction)
-            {
-                if(Reactions == null) Reactions = reaction;
-                Reactions += reaction;
-                return this;
-            }
-
-            public Stat<T, TTag> RemoveReaction(Action<T> reaction)
-            {
-                Reactions -= reaction;
-                return this;
-            }
-            
             
             /// <summary>
             /// Implicit conversion so we can treat this object like its raw value T in math or logic

@@ -15,9 +15,9 @@ namespace EMILtools.Timers
         public bool isRunning { get; protected set; } = false;
         public float Progress => Time / initialTime.Value;
 
-        public ActionDecorator OnTimerStart = new();
-        public ActionDecorator OnTimerStop = new();
-        public ActionDecorator OnTimerTick = new();
+        public StableAction OnTimerStart = new();
+        public StableAction OnTimerStop = new();
+        public StableAction OnTimerTick = new();
 
         public Timer(Ref<float> _initialTime)
         {
