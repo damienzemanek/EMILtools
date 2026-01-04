@@ -7,6 +7,7 @@ using Sirenix.OdinInspector;
 using static EMILtools.Signals.ModiferRouting;
 using static EMILtools.Signals.ModifierExtensions;
 using static EMILtools.Signals.ModifierStrategies;
+using static EMILtools.Signals.StatTags;
 
 namespace EMILtools.Signals
 {
@@ -49,16 +50,25 @@ namespace EMILtools.Signals
         /// <typeparam name="T"></typeparam>
         [Serializable]
         [InlineProperty]
-        public sealed class Stat<T, TMod> : Ref<T>, IStat 
+        public sealed class Stat<T, TTag> : Ref<T>, IStat 
             where T : struct
-            where TMod : struct, IStatModStrategy<T>
+            where TTag : struct, IStatTag
         {
             public struct ModifierSlot
             {
-                public TMod modifier;
-                public List<IStatModDecorator<T, TMod>> decorators;
-                public bool hasDecorators => (decorators != null) && (decorators.Count > 0);
-
+                public ModifierSlot(ulong hash)
+                {
+                    this.hash = hash;
+                    listsOfModifiers = new();
+                }
+                
+                public ulong hash; // For quick removal ops. moved from inside the mod to here so i dont have to iterate look for it
+                
+                // Type is TMod type (ex: tyepof MathMod, typeof ContextMod), Cannot be genericly constrainted
+                // object is List<TMod> (ex: List<struct MathMod>)
+                // decors corrosponds to the tmodlist it decorates
+                public List<(Type tmodtype, object tmodlist, List<IStatModDecorator<T, TTag>> decors)> listsOfModifiers;
+                
                 /// <summary>
                 /// Apply the decorator if it's there first
                 /// </summary>
@@ -66,24 +76,47 @@ namespace EMILtools.Signals
                 /// <returns></returns>
                 public T SlotApply(T val)
                 {
-                    if (hasDecorators)
-                        return modifier.Apply(decorators.ApplyDecorators(val));
-                    else
-                        return modifier.Apply(val);
-                }
-                
-                public bool RemoveDecorator(IStatModDecorator<T, TMod> deco, Stat<T, TMod> stat)
-                {
-                    if (decorators == null) return false;
-                    bool removed = decorators.Remove(deco);
-                    if (removed)
+                    Debug.Log($"[SlotApply] Applying the Lists using val {val}");
+                    foreach (var (tmodtype, tmodlist, decors) in listsOfModifiers)
                     {
-                        deco.stat = stat;
-                        deco.OnRemove?.Invoke();
-                        return true;
+                        if (decors != null && decors.Count > 0)
+                            return ResolveList(tmodtype, tmodlist, decors.ApplyDecorators(val));
+                        else
+                            return ResolveList(tmodtype, tmodlist, val);
                     }
+                    return val;
+                }
 
-                    return false;
+                public void AddModifierToSlot<TMod>(TMod mod)
+                    where TMod : struct, IStatModStrategy<T>
+                {
+                    if (listsOfModifiers == null) listsOfModifiers = new List<(Type, object, List<IStatModDecorator<T, TTag>>)>(); // Lazy init the list of (modifier lists)
+
+                    bool tmodlistAlreadyExists = false;
+                    foreach (var (tagtype, tmodlist, decs) in listsOfModifiers)
+                    {
+                        if (tagtype == typeof(TMod)) // If there is already a List<TMod> of this TMod Type, Add to this List<TMod> (which is a object atm)
+                        {
+                            (tmodlist as List<TMod>).Add(mod);
+                            tmodlistAlreadyExists = true;
+                            break;
+                        }
+                    }
+                    if (tmodlistAlreadyExists == false)                  // If there isnt already a List<TMod> of this TMod type, Create the List<Tmod> and add it to the listsOfModifiers master list)
+                    {
+                        var newtmodList = new List<TMod>() { mod };// Lazy initialize specific modifier list, of this TMod type, and assign
+                        listsOfModifiers.Add((typeof(TMod), newtmodList, null));
+                    }
+                }
+
+                public void RemoveAllDecoratorsFromSlot()
+                {
+                    foreach (var (_, _, decors) in listsOfModifiers)
+                    {
+                        if (decors == null) continue;
+                        foreach (var dec in decors)
+                            dec?.OnRemove?.Invoke();
+                    }
                 }
             }
             
@@ -127,16 +160,16 @@ namespace EMILtools.Signals
             }
 
             // Not initialized here to save on memory, When using lazy initialize
-            private List<ModifierSlot> _modifiers;
+            private List<ModifierSlot> _modSlots;
             private List<Func<T, T>> _intercepts;
             
             // Access for Configurations
-            public IReadOnlyList<ModifierSlot> Modifiers => _modifiers;
+            public IReadOnlyList<ModifierSlot> ModSlots => _modSlots;
             public IReadOnlyList<Func<T, T>> Intercepts => _intercepts;
             public event Action<T> Reactions; //Kept as event so outside scripts can't invoke it directly
             
             
-            bool HasModifiers => _modifiers != null && _modifiers.Count > 0;
+            bool HasModifiers => _modSlots != null && _modSlots.Count > 0;
             bool HasIntercepts => _intercepts != null && _intercepts.Count > 0;
 
             public Stat(T initialValue) : base(initialValue) => Calculate();
@@ -164,7 +197,7 @@ namespace EMILtools.Signals
             T Calculate()
             {
                 if (!HasModifiers) return val;
-                T beingModified = _modifiers.ApplyAll(val);
+                T beingModified = _modSlots.ApplyAll(val);
                 Debug.Log("Old calculated value: " + val);
                 Debug.Log("New calculated value: " + beingModified);
                 return calculated = beingModified;
@@ -179,7 +212,7 @@ namespace EMILtools.Signals
             
             
             //--------------------------------------------------
-            //                  Modifiers
+            //                  Stat Modifiers
             //--------------------------------------------------
             /// <summary>
             /// Modifiers are functions that modify the base value and replace the Value getter with the calcualted value
@@ -189,22 +222,23 @@ namespace EMILtools.Signals
             /// </summary>
             /// <param name="modifier"></param>
             /// <returns></returns>
-            // Struct
-            public void AddModifier(TMod modifier)
+            public void AddModifier<TMod>(TMod mod) 
+                where TMod: struct, IStatModStrategy<T>
             {
-                Debug.Log("Adding Modifier: " + modifier);
+                Debug.Log("Adding Modifier: " + mod);
                 
-                if(Modifiers == null) _modifiers = new List<ModifierSlot>(); // Lazy init for the list
-                ModifierSlot newSlot = new ModifierSlot { modifier = modifier, }; // create the slot, put in the mod
-                _modifiers.Add(newSlot); // add the slot to the list
+                if(ModSlots == null) _modSlots = new List<ModifierSlot>(); // Lazy init for the SLOTS
+                ModifierSlot newSlot = new ModifierSlot(mod.hash);
+                newSlot.AddModifierToSlot(mod); // Add the MOD into the slot
+                _modSlots.Add(newSlot); // Add the slot with the new mod into the SLOTS
                 
-                Debug.Log($"Added Modifier : {modifier}. Total Modifiers now: {_modifiers.Count}");
+                Debug.Log($"Added Modifier : {mod}. Total Modifier Slots now: {_modSlots.Count}");
                 Calculate();
             }
             
             public void RemoveModifier(ulong hash)
             {
-                if (!_modifiers.RemoveModifierSlot(hash)) {
+                if (!_modSlots.RemoveModifierSlotEX(hash)) {
                     Debug.Log("[RemoveModifier] Removal failed. Could not find modifier with that func"); return; }
                 
                 Debug.Log("[RemoveModifier] Modifier Slot Removal Success. (Which includes the modifiers and decorators)");
@@ -212,21 +246,21 @@ namespace EMILtools.Signals
             }
             
             //--------------------------------------------------
-            //                  Decorators
+            //                 Stat Decorators
             //--------------------------------------------------
             
-            public void AddDecorator(IStatModDecorator<T, TMod> decorator)
+            public void AddDecorator(IStatModDecorator<T, TTag> decorator)
             {
                 Debug.Log("Appending Decorators: " + decorator);
-                _modifiers.AddDecorator(decorator, this);
-                Debug.Log($"Added Decorators : {decorator}. Total Modifiers now: {_modifiers.Count}");
-
+                _modSlots.AddDecoratorEX(decorator, this);
+                Debug.Log($"Added Decorators : {decorator}. Total Modifier Slots now: {_modSlots.Count}");
+            
                 Calculate();
             }
             
-            public void RemoveDecorator(ulong hash, IStatModDecorator<T, TMod> deco)
+            public void RemoveDecorator(ulong hash, IStatModDecorator<T, TTag> deco)
             {
-                if (!_modifiers.RemoveDecoOnMod(this, hash, deco)) {
+                if (!_modSlots.RemoveDecoOnModEX(hash, deco)) {
                     Debug.Log("[Removing Decorator] Removal failed. Could not find modifier with that func");
                     return; }
                 
@@ -236,7 +270,7 @@ namespace EMILtools.Signals
             
             
             //--------------------------------------------------
-            //                  Interecepts
+            //                  Stat Interecepts
             //--------------------------------------------------
 
             /// <summary>
@@ -246,7 +280,7 @@ namespace EMILtools.Signals
             /// </summary>
             /// <param name="intercept"></param>
             /// <returns></returns>
-            public Stat<T, TMod> AddIntercept(Func<T, T> intercept)
+            public Stat<T, TTag> AddIntercept(Func<T, T> intercept)
             {
                 if(Intercepts == null) _intercepts = new List<Func<T, T>>();
                 if (_intercepts.Contains(intercept)) return this;
@@ -256,7 +290,7 @@ namespace EMILtools.Signals
 
             }
             
-            public Stat<T, TMod> RemoveIntercept(Func<T, T> intercept)
+            public Stat<T, TTag> RemoveIntercept(Func<T, T> intercept)
             {
                 _intercepts.Remove(intercept);
                 RefreshIntercept();
@@ -272,14 +306,14 @@ namespace EMILtools.Signals
             /// </summary>
             /// <param name="reaction"></param>
             /// <returns></returns>
-            public Stat<T, TMod> AddReaction(Action<T> reaction)
+            public Stat<T, TTag> AddReaction(Action<T> reaction)
             {
                 if(Reactions == null) Reactions = reaction;
                 Reactions += reaction;
                 return this;
             }
 
-            public Stat<T, TMod> RemoveReaction(Action<T> reaction)
+            public Stat<T, TTag> RemoveReaction(Action<T> reaction)
             {
                 Reactions -= reaction;
                 return this;
@@ -291,7 +325,7 @@ namespace EMILtools.Signals
             /// </summary>
             /// <param name="r"></param>
             /// <returns></returns>
-            public static implicit operator T(Stat<T, TMod> r) => (r != null) ? r.Value : default;
+            public static implicit operator T(Stat<T, TTag> r) => (r != null) ? r.Value : default;
             
         }
     

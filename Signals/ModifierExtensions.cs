@@ -6,6 +6,7 @@ using EMILtools.Timers;
 using UnityEngine;
 using static EMILtools.Signals.ModiferRouting;
 using static EMILtools.Signals.ModifierStrategies;
+using static EMILtools.Signals.StatTags;
 
 namespace EMILtools.Signals
 { 
@@ -13,42 +14,54 @@ namespace EMILtools.Signals
     {
         public interface IStat { }
 
+        //---------------------------------------------------------------------------------------
+        //                  Modify               [User] -> [Stat]
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
         
-        //-----------------------------------------------------------------------------------
-        //                 Modify               [User] -> [Stat]
-        //------------------------------------------------------------------------------------
-        // Float specific overload
-        public static (TMod, IStatUser) Modify<TMod>(this IStatUser user, TMod mod)
+        //---------------------------------  FLOAT - MathMod  -----------------------------------
+        public static (MathMod, TTag, IStatUser) Modify<TTag>(this IStatUser user, MathMod mod)
+            where TTag : struct, IStatTag
+        => user.Modify<float, MathMod, TTag>(mod);
+        
+        //--------------------------------  FLOAT  - GENERIC TMod --------------------------------
+        public static (TMod, TTag, IStatUser) Modify<TMod, TTag>(this IStatUser user, TMod mod)
             where TMod : struct, IStatModStrategy<float>
-        => user.Modify<float, TMod>(mod);
+            where TTag : struct, IStatTag
+            => user.Modify<float, TMod, TTag>(mod);
         
-        // Generic base Modify
-        public static (TMod, IStatUser) Modify<T, TMod>(this IStatUser user, TMod mod)
+        //------------------------------- Generic T - GENERIC TMod  -----------------------------
+        public static (TMod, TTag, IStatUser) Modify<T, TMod, TTag>(this IStatUser user, TMod mod)
             where T : struct
             where TMod : struct, IStatModStrategy<T>
+            where TTag : struct, IStatTag
         {
-            Stat<T, TMod> stat = (user.Stats[typeof(TMod)] as Stat<T, TMod>);
+            Stat<T, TTag> stat = (user.Stats[typeof(TTag)] as Stat<T, TTag>);
             stat.AddModifier(mod);
-            return (mod, user);
+            return (mod, new TTag(), user);
         }
-        
         
         //-----------------------------------------------------------------------------------
         //                 Remove Modifier      [User] -> [Stat]
         //------------------------------------------------------------------------------------
-        // float override
-        public static (TMod, IStatUser) RemoveModifier<TMod>(this IStatUser user, TMod mod)
-            where TMod : struct, IStatModStrategy<float>
-        => user.RemoveModifier<float, TMod>(mod);
+        //---------------------------------  FLOAT - MathMod  ----------------------------------
+        public static void RemoveModifier<TTag>(this IStatUser user, MathMod mod)
+            where TTag : struct, IStatTag
+        => user.RemoveModifier<float, MathMod, TTag>(mod);
         
-        // Generic base Modify
-        public static (TMod, IStatUser) RemoveModifier<T, TMod>(this IStatUser user, TMod mod)
+        //--------------------------------  FLOAT  - GENERIC TMod --------------------------------
+        public static void RemoveModifier<TMod, TTag>(this IStatUser user, TMod mod)
+            where TMod : struct, IStatModStrategy<float>
+            where TTag : struct, IStatTag 
+        => user.RemoveModifier<float, TMod, TTag>(mod);
+        
+        //------------------------------------  GENERIC  --------------------------------------
+        public static void RemoveModifier<T, TMod, TTag>(this IStatUser user, TMod mod)
             where T : struct
             where TMod : struct, IStatModStrategy<T>
+            where TTag : struct, IStatTag
         {
-            Stat<T, TMod> stat = (user.Stats[typeof(TMod)] as Stat<T, TMod>);
+            Stat<T, TTag> stat = (user.Stats[typeof(TTag)] as Stat<T, TTag>);
             stat.RemoveModifier(mod.hash);
-            return (mod, user);
         }
         
         
@@ -57,19 +70,21 @@ namespace EMILtools.Signals
         //                 Decorator Add/Remove   [User] -> [Stat]
         //------------------------------------------------------------------------------------
         // Generic base Modify
-        public static void AddDecorator<T, TMod>(this IStatUser user, IStatModDecorator<T, TMod> decorator)
+        public static void AddDecorator<T, TMod, TTag>(this IStatUser user, IStatModDecorator<T, TTag> decorator)
             where T : struct
             where TMod : struct, IStatModStrategy<T>
+            where TTag : struct, IStatTag
         {
-            Stat<T, TMod> stat = (user.Stats[typeof(TMod)] as Stat<T, TMod>);
+            Stat<T, TTag> stat = (user.Stats[typeof(TTag)] as Stat<T, TTag>);
             stat.AddDecorator(decorator);
         }
         
-        public static void RemoveDecorator<T, TMod>(this IStatUser user,  TMod mod, IStatModDecorator<T, TMod> decorator)
+        public static void RemoveDecorator<T, TMod, TTag>(this IStatUser user,  TMod mod, IStatModDecorator<T, TTag> decorator)
             where T : struct
             where TMod : struct, IStatModStrategy<T>
+            where TTag : struct, IStatTag
         {
-            Stat<T, TMod> stat = (user.Stats[typeof(TMod)] as Stat<T, TMod>);
+            Stat<T, TTag> stat = (user.Stats[typeof(TTag)] as Stat<T, TTag>);
             stat.RemoveDecorator(mod.hash, decorator);
         }
         
@@ -80,111 +95,90 @@ namespace EMILtools.Signals
         
         
         //-----------------------------------------------------------------------------------
-        //                          Modifier Slot Remove  
+        //                         EX Modifier Slot Remove  
         //------------------------------------------------------------------------------------
-        public static bool RemoveModifierSlot<T, TMod>(this List<Stat<T, TMod>.ModifierSlot> modslots, ulong hash)
+        public static bool RemoveModifierSlotEX<T, TTag>(this List<Stat<T, TTag>.ModifierSlot> modslots, ulong hash)
             where T : struct
-            where TMod : struct, IStatModStrategy<T>
+            where TTag : struct, IStatTag
         {
             Debug.Log("Removal STARTED");
-
+        
             for (int i = 0; i < modslots.Count; i++)
             {
-                if (modslots[i].modifier.GetType() != typeof(TMod)) { continue; } // must be same TMod
-                if (modslots[i].modifier.hash != hash)              { continue; } // must be same hash 
-                
-                if (modslots[i].hasDecorators)
-                    foreach (var dec in modslots[i].decorators)
-                        dec?.OnRemove?.Invoke();
-                
+                if (modslots[i].hash != hash) { continue; } // must be same hash 
+                modslots[i].RemoveAllDecoratorsFromSlot();
                 modslots.RemoveAt(i); 
                 Debug.Log("Sucessfully Removed Modifier Slot");
                 return true;
-                
             }
             return false;
         }
         
         //-----------------------------------------------------------------------------------
-        //                          Decorator Add/Remove 
+        //                        EX  Stat Decorator Add/Remove 
         //------------------------------------------------------------------------------------
-        public static bool RemoveDecoOnMod<T, TMod>(this List<Stat<T, TMod>.ModifierSlot> modslots, Stat<T, TMod> stat, ulong hash, IStatModDecorator<T, TMod> deco)
+        public static bool RemoveDecoOnModEX<T, TTag>(this List<Stat<T, TTag>.ModifierSlot> modslots, ulong hash, IStatModDecorator<T, TTag> dec)
             where T : struct
-            where TMod : struct, IStatModStrategy<T>
+            where TTag : struct, IStatTag
         {
             Debug.Log("Removal STARTED");
-
+        
             for (int i = 0; i < modslots.Count; i++)
             {
                 Debug.Log($"Checking Mod slot {i} (continuing...) ");
-                if (modslots[i].modifier.GetType() != typeof(TMod)) continue; // Has to be same TMod
-                if (modslots[i].modifier.hash != hash) continue;              // Has to be same hash (Can be mult modifiers on the same Modifier Name)
-                if (modslots[i].hasDecorators) 
-                    return modslots[i].RemoveDecorator(deco, stat); // If it even has decs
+                if (modslots[i].hash != hash) continue;                                                          // Correct Slot
+                for (int j = 0; j < modslots[i].listsOfModifiers.Count; j++)
+                {
+                    if (modslots[i].listsOfModifiers[j].tmodtype != dec.tmodType) continue;                     // Correct TMod List (Meaning Correct Decor List)
+                    if (modslots[i].listsOfModifiers[j].decors != null && modslots[i].listsOfModifiers[j].decors.Count > 0) // Not null
+                    {
+                       bool removed = modslots[i].listsOfModifiers[j].decors.Remove(dec);
+                       if (removed) dec.OnRemove?.Invoke();
+                    }
+                }
             }
             return false;
         }
         
-        public static List<Stat<T, TMod>.ModifierSlot> AddDecorator<T, TMod>(this List<Stat<T,TMod>.ModifierSlot> modslots,
-            IStatModDecorator<T, TMod> decorator,
-            Stat<T, TMod> stat
-        )
+        public static List<Stat<T, TTag>.ModifierSlot> AddDecoratorEX<T, TTag>(this List<Stat<T,TTag>.ModifierSlot> modslots,
+                                                                                    IStatModDecorator<T, TTag> decorator,
+                                                                                    Stat<T, TTag> stat )
             where T : struct
-            where TMod : struct, IStatModStrategy<T>
+            where TTag : struct, IStatTag
         {
             bool added = false;
-            for (int i = 0; i < modslots.Count; i++) {
+            for (int i = 0; i < modslots.Count; i++)
+            {
+                if (modslots[i].hash != decorator.hash) continue; // Finding the correct slot by hash
 
-                // ? Is this already typed for this? Do i need this check at all
-                if (modslots[i].modifier.GetType() != decorator.linkType) continue; // No Match
-                Debug.Log($"[AddDecorator] Matched type");
-                
-                decorator.stat = stat;
-                    
-                if (modslots[i].decorators == null)
+                for (int j = 0; j < modslots[i].listsOfModifiers.Count; j++)  // for loop cause foreach is immutable list (bruhhh)
                 {
-                    // Still ned to struct quick copy on the first dec tho
-                    var slot = modslots[i];
-                        
-                    //Specify that the slot owns their own decorators, to avoid killing of the ref somewhere else
-                    slot.decorators = new List<IStatModDecorator<T, TMod>>();
-                    modslots[i] = slot;
-                    Debug.Log($"[AddDecorator] Lazy Initialized new list of decorators for slot {i}");
+                    var tmodtype = modslots[i].listsOfModifiers[j].tmodtype;
+                    var decList = modslots[i].listsOfModifiers[j].decors;
+                    
+                    if (tmodtype != decorator.tmodType) continue;
+                    
+                    // only quick copy for the value-type tuple
+                    // will most likely occur early when there are not that many modifiers to copy as decs will be common
+                    if (decList == null)
+                    {
+                        modslots[i].listsOfModifiers[j] = (modslots[i].listsOfModifiers[j].tmodtype, 
+                                                            modslots[i].listsOfModifiers[j].tmodlist, 
+                                                            decList = new List<IStatModDecorator<T, TTag>>());
+                    }
+    
+                    // set its stat for use by the dec
+                    decorator.stat = stat;
+                    decList.AddGet(decorator).OnAdd?.Invoke();
+                    Debug.Log($"[AddDecorator] Added new decorator to slot {i}"); added = true;
                 }
                 
-                // Avoid struct quick copy on subsequent adds
-                // because we can just go straight to the list which is a ref
-                // previous was only 1, so it had to be re-assigned
-                modslots[i].decorators.AddGet(decorator).OnAdd?.Invoke();
-                Debug.Log($"[AddDecorator] Added new decorator to slot {i}");
-                added = true;
             }
             if(added) Debug.Log($"[AddDecorator] Added Decorator Success");
             else Debug.Log($"[AddDecorator] Added Decorator FAILED [!] ");
             return modslots;
         }
         
-        
-        //-----------------------------------------------------------------------------------
-        //            Modifier Applying Funcs / Decorator Flexible Thoroughfare
-        //------------------------------------------------------------------------------------
-        
-        public static T ApplyAll<T, TMod>(this List<Stat<T,TMod>.ModifierSlot> modslots, T val)
-            where T : struct
-            where TMod : struct, IStatModStrategy<T>
-        {
-            // Decorator first, then modifier
-            foreach (var slot in modslots) val = slot.SlotApply(val);
-            return val;
-        }
-        
-        public static T ApplyDecorators<T, TMod>(this List<IStatModDecorator<T, TMod>> decorators, T val)
-            where T : struct
-            where TMod : struct, IStatModStrategy<T>
-        {
-            foreach (var dec in decorators) val = dec.ApplyThruDecoratorFirst(val);
-            return val;
-        }
     }
 }
 

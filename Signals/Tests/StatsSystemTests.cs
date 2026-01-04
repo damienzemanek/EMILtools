@@ -9,6 +9,7 @@ using UnityEngine;
 using UnityEngine.TestTools;
 using static EMILtools.Signals.ModiferRouting;
 using static EMILtools.Signals.ModifierExtensions;
+using static EMILtools.Signals.StatTags;
 
 public class StatsSystemTests : MonoBehaviour
 {
@@ -16,7 +17,7 @@ public class StatsSystemTests : MonoBehaviour
     private class TestStatUser : IStatUser
     {
         public Dictionary<Type, IStat> Stats { get; set; }
-        public Stat<float, SpeedModifier> speed = new Stat<float, SpeedModifier>(10f);
+        public Stat<float, Speed> speed = new Stat<float, Speed>(10f);
     }
 
     [Test]
@@ -25,8 +26,8 @@ public class StatsSystemTests : MonoBehaviour
         var user = new TestStatUser();
         user.CacheStats();
         
-        var speed = new SpeedModifier(x => x * 2);
-        user.Modify(speed);
+        var doubleIt = new MathMod(x => x * 2);
+        user.Modify<Speed>(doubleIt);
         Assert.AreEqual(20f, user.speed.Value, "The stat value should be doubled by the modifier");
     }
     
@@ -37,17 +38,17 @@ public class StatsSystemTests : MonoBehaviour
         var user = new TestStatUser();
         user.CacheStats();
         
-        var speed = new SpeedModifier(x => x * 2);
-        user.Modify(speed);
+        var doubleIt = new MathMod(x => x * 2);
+        user.Modify<Speed>(doubleIt);
         
         Assert.AreEqual(20f, user.speed.Value, "Initial modifier added, stat should be doubled");
-
+    
         // Removing the same modifier by its hash should restore base value
-        user.RemoveModifier(speed);
+        user.RemoveModifier<Speed>(doubleIt);
         
         Assert.AreEqual(10f, user.speed.Value, "After removing the modifier, stat should return to base value");
     }
-
+    
     
     
     [Test]
@@ -56,11 +57,11 @@ public class StatsSystemTests : MonoBehaviour
         var user = new TestStatUser();
         user.CacheStats();
         
-        var speed1 = new SpeedModifier(x => x + 5);
-        var speed2 = new SpeedModifier(x => x * 2);
+        var add5 = new MathMod(x => x + 5);
+        var mult2 = new MathMod(x => x * 2);
     
-        user.Modify(speed1);
-        user.Modify(speed2);
+        user.Modify<Speed>(add5);
+        user.Modify<Speed>(mult2);
         
         // (10 + 5) * 2 = 30
         Assert.AreEqual(30f, user.speed.Value, "Multiple modifiers should apply in the order they are added");
@@ -72,17 +73,17 @@ public class StatsSystemTests : MonoBehaviour
         var user = new TestStatUser();
         user.CacheStats();
     
-        var doubleMod = new SpeedModifier(x => x * 2);
-        var addMod = new SpeedModifier(x => x + 100);
+        var mult2 = new MathMod(x => x * 2);
+        var add100 = new MathMod(x => x + 100);
     
-        user.Modify(doubleMod);
-        user.Modify(addMod);
+        user.Modify<Speed>(mult2);
+        user.Modify<Speed>(add100);
     
         // (10 * 2) + 100 = 120
         Assert.AreEqual(120f, user.speed.Value, "(10 * 2) + 100 = 120");
     
-        // Remove only the 'double' modifier by its hash
-        user.RemoveModifier(doubleMod);
+        // Remove only the 'mult2' modifier by its hash
+        user.RemoveModifier<Speed>(mult2);
     
         // 10 + 100 = 110
         Assert.AreEqual(110f, user.speed.Value, "After removing the doubler, only the +100 modifier should remain");
@@ -94,10 +95,12 @@ public class StatsSystemTests : MonoBehaviour
     {
         var user = new TestStatUser();
         user.CacheStats();
-        var speed = new SpeedModifier(x => x + 5);
+        var add5 = new MathMod(x => x + 5);
     
-        user.Modify(speed);
-        user.Modify(speed);
+        // Im pretty sure since we are adding a new slot with the same hash twice, if I were to add manual decorator removal, and
+        // i were to decorate one of these, it would result in it not finding the right decorator, idk tho
+        user.Modify<Speed>(add5);
+        user.Modify<Speed>(add5);
         
         // (10 + 5) + 5 = 20
         Assert.AreEqual(20f, user.speed.Value, "Adding the same +5 modifier twice should increase the stat by 10 total");
@@ -110,13 +113,14 @@ public class StatsSystemTests : MonoBehaviour
         var user = new TestStatUser();
         user.CacheStats();
     
-        var speed = new SpeedModifier(x => x * 2);
-        user.Modify(speed).WithTimer(5, out _, out StatModDecTimed<float, SpeedModifier> dec);
+        var mult2 = new MathMod(x => x * 2);
+        user.Modify<Speed>(mult2).WithTimer(5, out _, out StatModDecTimed<float, MathMod, Speed> dec);
         
         // While the timed decorator is active, the underlying modifier is applied
         Assert.AreEqual(20f, user.speed.Value, "The stat value should be doubled while the timed modifier is active");
         Assert.AreEqual(true, dec.timer.isRunning, "The timer associated with the timed modifier should be running");
     }
+    
     
     
     
@@ -126,11 +130,11 @@ public class StatsSystemTests : MonoBehaviour
         var user = new TestStatUser();
         user.CacheStats();
     
-        var speed = new SpeedModifier(x => x + 10);
+        var add10 = new MathMod(x => x + 10);
         // Two separate timed decorators controlling the same underlying modifier's lifecycle
-        user.Modify(speed)
-            .WithTimer(5, out _, out StatModDecTimed<float, SpeedModifier> dec1)
-            .WithTimer(5, out _, out StatModDecTimed<float, SpeedModifier> dec2);
+        user.Modify<Speed>(add10)
+            .WithTimer(5, out _, out StatModDecTimed<float, MathMod, Speed> dec1)
+            .WithTimer(5, out _, out StatModDecTimed<float, MathMod, Speed> dec2);
         
         // Only the SpeedModifier (+10) changes the math; decorators manage timing/callbacks only
         // 10 (base) + 10 (modifier) = 20
@@ -147,10 +151,10 @@ public class StatsSystemTests : MonoBehaviour
         var user = new TestStatUser();
         user.CacheStats();
     
-        var speed = new SpeedModifier(x => x * 2);
-        user.Modify(speed)
-            .WithTimer(5, out _ ,out StatModDecTimed<float, SpeedModifier> dec1)
-            .WithTimer(5, out _, out StatModDecTimed<float, SpeedModifier> dec2);
+        var mult2 = new MathMod(x => x * 2);
+        user.Modify<Speed>(mult2)
+            .WithTimer(5, out _ ,out StatModDecTimed<float, MathMod, Speed> dec1)
+            .WithTimer(5, out _, out StatModDecTimed<float, MathMod, Speed> dec2);
         
         print($"(Speed {user.speed.Value})," +
               $" (timer isRunning {dec1.timer.isRunning})" + 
@@ -178,9 +182,9 @@ public class StatsSystemTests : MonoBehaviour
         user.CacheStats();
     
         bool onAddCalled = false;
-        var speed = new SpeedModifier(x => x + 5);
+        var add5 = new MathMod(x => x + 5);
     
-        user.Modify(speed).WithTimer(5, out _, out _, new Action[1] { () => onAddCalled = true });
+        user.Modify<Speed>(add5).WithTimer(5, out _, out _, new Action[1] { () => onAddCalled = true });
     
         Assert.IsTrue(onAddCalled, "The OnAdd callback on the decorator should be triggered when it is attached");
         Assert.AreEqual(15f, user.speed.Value, "Immediately after applying the +5 modifier, the stat should be 15");
@@ -194,20 +198,22 @@ public class StatsSystemTests : MonoBehaviour
         user.CacheStats();
     
         bool onStartCalled = false;
-        var speed = new SpeedModifier(x => x + 5);
+        var add5 = new MathMod(x => x + 5);
         
         CountdownTimer customTimer = new CountdownTimer(5, 
             OnTimerStartCbs: new Action[1] { () => onStartCalled = true });
     
-        user.Modify(speed).WithTimer(customTimer);
-
+        user.Modify<Speed>(add5).WithTimer(customTimer);
+    
         yield return new WaitForSeconds(1f);
+        
         print("IsRunning?: " + customTimer.isRunning);
+        
         Assert.IsTrue(customTimer.isRunning, "Custom Timer is running");
         Assert.IsTrue(onStartCalled, "The OnAdd callback on the decorator should be triggered when it is attached");
         Assert.AreEqual(15f, user.speed.Value, "Immediately after applying the +5 modifier, the stat should be 15");
     }
-
+    
     
     
     // Other tests
@@ -218,19 +224,19 @@ public class StatsSystemTests : MonoBehaviour
         var user = new TestStatUser();
         user.CacheStats();
     
-        var speed = new SpeedModifier(x => x + 10);
+        var add10 = new MathMod(x => x + 10);
     
-        user.Modify(speed)
-            .WithTimer(5, out _, out StatModDecTimed<float, SpeedModifier> dec1)
-            .WithTimer(5, out _, out StatModDecTimed<float, SpeedModifier> dec2);
+        user.Modify<Speed>(add10)
+            .WithTimer(5, out _, out StatModDecTimed<float, MathMod, Speed> dec1)
+            .WithTimer(5, out _, out StatModDecTimed<float, MathMod, Speed> dec2);
     
         // Underlying modifier applies once: 10 + 10 = 20
         Assert.AreEqual(20f, user.speed.Value, "Initial value should reflect a single +10 modifier with two attached decorators");
     
         // Explicit decorator removal by hash only runs its OnRemove callbacks; 
         // it does NOT drive timer expiry or remove the underlying modifier.
-
-        user.RemoveDecorator(speed, dec1);
+    
+        user.RemoveDecorator(add10, dec1);
         //user.speed.RemoveDecorator(strat.hash, timedShort);
         
         // The math is still unchanged: modifier is still present, so value stays 20
@@ -238,8 +244,8 @@ public class StatsSystemTests : MonoBehaviour
             "Removing a decorator directly only triggers its callbacks; it does not change the underlying modifier's effect");
     
         // Slot still exists and still has one decorator attached
-        Assert.AreEqual(1, user.speed.Modifiers.Count, "The modifier slot should still exist");
-        Assert.AreEqual(1, user.speed.Modifiers[0].decorators.Count, "Exactly one decorator should remain on the slot");
+        Assert.AreEqual(1, user.speed.ModSlots.Count, "The modifier slot should still exist");
+        Assert.AreEqual(1, user.speed.ModSlots[0].listsOfModifiers[0].decors.Count, "Exactly one decorator should remain on the slot");
     }
     
     [Test]
@@ -248,18 +254,20 @@ public class StatsSystemTests : MonoBehaviour
         var user = new TestStatUser();
         user.CacheStats();
     
-        var speed = new SpeedModifier(x => x * 2);
-
-        user.Modify(speed).WithTimer(100).WithTimer(100);
+        var mult2 = new MathMod(x => x * 2);
+    
+        user.Modify<Speed>(mult2)
+            .WithTimer(100)
+            .WithTimer(100);
     
         // At this point the modifier is active and has decorators; stat must differ from base
         Assert.AreNotEqual(10f, user.speed.Value, "Modifiers should have changed the stat value from its base");
     
         // Removing the base modifier by hash clears the entire slot (modifier + decorators)
-        user.RemoveModifier(speed);
+        user.RemoveModifier<Speed>(mult2);
     
         Assert.AreEqual(10f, user.speed.Value, "Removing the base modifier should revert the stat to its base value");
-        Assert.IsTrue(user.speed.Modifiers == null || user.speed.Modifiers.Count == 0,
+        Assert.IsTrue(user.speed.ModSlots == null || user.speed.ModSlots.Count == 0,
             "All modifier slots should be removed when the base modifier is removed");
     }
     
@@ -269,15 +277,15 @@ public class StatsSystemTests : MonoBehaviour
         var user = new TestStatUser();
         user.CacheStats();
     
-        var speed = new SpeedModifier(x => x * 2);
-        user.Modify(speed);
+        var mult2 = new MathMod(x => x * 2);
+        user.Modify<Speed>(mult2);
     
         Assert.AreEqual(20f, user.speed.Value, "Base modifier applied should double the stat");
     
         // Different func → different hash. Attempting to remove using this one should do nothing.
-        var fake = new SpeedModifier(x => x + 999);
+        var fake = new MathMod(x => x + 999);
     
-        user.RemoveModifier(fake);
+        user.RemoveModifier<Speed>(fake);
     
         // Stat remains unchanged
         Assert.AreEqual(20f, user.speed.Value,
@@ -291,9 +299,9 @@ public class StatsSystemTests : MonoBehaviour
         var user = new TestStatUser();
         user.CacheStats();
     
-        var speed = new SpeedModifier(x => x + 5);
-        user.Modify(speed)
-            .WithTimer(5, out _, out StatModDecTimed<float, SpeedModifier> dec1);
+        var speed = new MathMod(x => x + 5);
+        user.Modify<Speed>(speed)
+            .WithTimer(5, out _, out StatModDecTimed<float, MathMod, Speed> dec1);
     
         Assert.AreEqual(15f, user.speed.Value, "Initial value should be base +5 from the modifier");
     
@@ -303,7 +311,7 @@ public class StatsSystemTests : MonoBehaviour
         // With the entire modifier slot removed, stat returns to base value
         Assert.AreEqual(10f, user.speed.Value, "Force-stopping a timed decorator with this hash removes the whole modifier");
     
-        Assert.AreEqual(0, user.speed.Modifiers.Count, "The modifier slot should be completely removed");
+        Assert.AreEqual(0, user.speed.ModSlots.Count, "The modifier slot should be completely removed");
     }
     
     [UnityTest]
@@ -312,8 +320,8 @@ public class StatsSystemTests : MonoBehaviour
         var user = new TestStatUser();
         user.CacheStats();
     
-        var speed = new SpeedModifier(x => x * 2);
-        user.Modify(speed).WithTimer(0.5f, out CountdownTimer timer, out _);
+        var mult2 = new MathMod(x => x * 2);
+        user.Modify<Speed>(mult2).WithTimer(0.5f, out CountdownTimer timer, out _);
     
         Assert.AreEqual(20f, user.speed.Value, "Base + timed modifier applied initially should double the stat");
     
@@ -337,11 +345,11 @@ public class StatsSystemTests : MonoBehaviour
         var user = new TestStatUser();
         user.CacheStats();
     
-        var speedTemp  = new SpeedModifier(x => x * 2);     // temporary buff
-        var speedPerm = new SpeedModifier(x => x + 5);     // permanent buff
-
-        user.Modify(speedTemp).WithTimer(0.5f, out CountdownTimer timer, out _);
-        user.Modify(speedPerm);
+        var temp_mult2  = new MathMod(x => x * 2);     // temporary buff
+        var perm_add5 = new MathMod(x => x + 5);     // permanent buff
+    
+        user.Modify<Speed>(temp_mult2).WithTimer(0.5f, out CountdownTimer timer, out _);
+        user.Modify<Speed>(perm_add5);
     
         // While the timed modifier is active: (10 * 2) + 5 = 25
         Assert.AreEqual(25f, user.speed.Value, "Timed modifier and permanent modifier should both be active initially");

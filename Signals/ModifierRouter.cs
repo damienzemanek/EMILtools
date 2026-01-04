@@ -41,10 +41,10 @@ namespace EMILtools.Signals
                 var instance = field.GetValue(user);
                 var genericArgs = field.FieldType.GetGenericArguments();
                 var t = genericArgs[0];
-                var tmod = genericArgs[1];
+                var ttag = genericArgs[1];
                 
-                user.Stats[tmod] = instance as IStat;
-                Debug.Log($"[CacheStatFields] Cached stat of TMod {tmod} in user {user}");
+                user.Stats[ttag] = instance as IStat;
+                Debug.Log($"[CacheStatFields] Cached stat of TMod {ttag} in user {user}");
             }
         }
     }
