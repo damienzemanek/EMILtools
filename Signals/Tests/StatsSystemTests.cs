@@ -200,7 +200,7 @@ public class StatsSystemTests : MonoBehaviour
         bool onStartCalled = false;
         var add5 = new MathMod(x => x + 5);
         
-        CountdownTimer customTimer = new CountdownTimer(5, 
+        CountdownTimer customTimer = new CountdownTimer(5, true,
             OnTimerStartCbs: new Action[1] { () => onStartCalled = true });
     
         user.Modify<Speed>(add5).WithTimer(customTimer);

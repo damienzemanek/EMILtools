@@ -6,18 +6,18 @@ namespace EMILtools.Timers
     [Serializable]
     public class CountdownTimer : Timer
     {
-        public CountdownTimer(Ref<float> _initialTime) : base(_initialTime) { }
-        public CountdownTimer(float _initialTime) : base(new Ref<float>(_initialTime)) { }
+        public CountdownTimer(float _initialTime, bool isRef = false) : base(_initialTime, isRef) { }
         
-        public CountdownTimer(float _initialTime,
+        public CountdownTimer(float _initialTime, bool isRef,
             Action[] OnTimerStartCbs = null,
             Action[] OnTimerTickCbs = null,
             Action[] OnTimerStopCbs = null)
-        : base
-            (new Ref<float>(_initialTime),
+        : base (
+            _initialTime,
+            isRef,
             OnTimerStartCbs,
             OnTimerTickCbs,
-            OnTimerStopCbs) 
+            OnTimerStopCbs)
         { }
 
         

@@ -8,24 +8,20 @@ namespace EMILtools.Timers
     [Serializable]
     public abstract class Timer
     {
-        public float Duration { get => initialTime.Value;}
-        protected Ref<float> initialTime;
+        protected Configureable<float> initialTime;
         protected float Time { get; set; }
-
         public bool isRunning { get; protected set; } = false;
         public float Progress => Time / initialTime.Value;
-
+        public float Duration => initialTime.Value;
+        
         public StableAction OnTimerStart = new();
         public StableAction OnTimerStop = new();
         public StableAction OnTimerTick = new();
 
-        public Timer(Ref<float> _initialTime)
-        {
-            initialTime = _initialTime;
-            isRunning = false;
-        }
+        public Timer(float _initialTime, bool isRef = false)
+            => initialTime.Initialize(_initialTime, isRef);
         
-        public Timer(Ref<float> _initialTime,
+        public Timer(float _initialTime, bool isRef = false,
                 Action[] OnTimerStartCbs = null,
                 Action[] OnTimerTickCbs = null,
                 Action[] OnTimerStopCbs = null)
@@ -34,7 +30,7 @@ namespace EMILtools.Timers
             if(OnTimerTickCbs != null && OnTimerTickCbs.Length > 0) OnTimerTick.Add(OnTimerTickCbs);
             if(OnTimerStopCbs != null && OnTimerStopCbs.Length > 0) OnTimerStop.Add(OnTimerStopCbs);
             
-            initialTime = _initialTime;
+            initialTime.Initialize(_initialTime, isRef);
             isRunning = false;
         }
 
