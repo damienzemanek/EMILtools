@@ -8,41 +8,94 @@ using UnityEngine;
 namespace EMILtools.Core
 {
     
+    
+    [AttributeUsage(AttributeTargets.Field)]
+    public class StabilizeAttribute : Attribute { }
+    
+    // Implications / Runtime Behavior
+    //
+    // Non-stable copies:
+    //
+    //      Can always move around; value semantics preserved.
+    //
+    //      Copies do not become stable if the owner is stabilized afterward.
+    //
+    // Stable copies (or post-stabilization access):
+    //
+    //      Reference semantics ensured.
+    //
+    //     refval guarantees safe access; no null references.
+    //
+    // Edge case safety:
+    //
+    //      Pre-stabilization copies remain value copies — safe.
+    //
+    //      Post-stabilization copies automatically share reference.
+    //
+    // Mental model:
+    //      Intuitive for the developer: "stabilize your user → everything becomes reference; copies made before stabilization remain free value copies."
+    //     
+    
+    
     public interface IStablizableUser { }
 
     public interface IStablizable
     {
-        void Stabilize(IStablizableUser user);
+        /// <summary>
+        /// param fromStabilizer is not intended for manual Stabilization.
+        /// </summary>
+        /// <param name="user"></param>
+        /// <param name="fromStabilizer"></param>
+        void Stabilize(IStablizableUser user, bool fromStabilizer = false);
     }
-
-    public static class ConfigInitializer
+    
+    public static class Stabilizer
     {
         public static HashSet<IStablizableUser> stabilizedUsers = new();
+        
+        public static void StabilizeAttributed(this IStablizableUser user)
+        {
+            Debug.Log("Initializing StableValueTypes started...");
+            var stableFields = user.GetType()
+                .GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .Where(f => typeof(IStablizable).IsAssignableFrom(f.FieldType)
+                                    && f.GetCustomAttribute<StabilizeAttribute>() != null)
+                .ToList();
+            Debug.Log("Fields marked with [Stabilize]: " + stableFields.Count);
 
-        public static void Stabilize(this IStablizableUser user)
+            user.StabilizeFields(stableFields);
+        }
+        
+        public static void StabilizeAll(this IStablizableUser user)
         {
             Debug.Log("Initializing StableValueTypes started...");
             var stableFields = user.GetType()
                 .GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .Where(f => typeof(IStablizable).IsAssignableFrom(f.FieldType))
                 .ToList();
-            Debug.Log("Retrieved list of stable value-types, size is " + stableFields.Count);
+            Debug.Log("Stabilizing All fields " + stableFields.Count);
+            
+            user.StabilizeFields(stableFields);
 
+        }
+
+        static void StabilizeFields(this IStablizableUser user, List<FieldInfo> stableFields)
+        {
             foreach (var field in stableFields)
             {
                 var value = field.GetValue(user);
                 ((IStablizable)value).Stabilize(user);
                 field.SetValue(user, value); // re-assining back struct value
-                Debug.Log($"Initizalized reference on field {field.Name}");
+                Debug.Log($"Initialized reference on field {field.Name}");
             }
-            
             stabilizedUsers.Add(user);
         }
+        
     }
 
     
     /// <summary>
-    /// Value-types that can be optionally set to be reference types for stable configuration
+    /// Value-types that can be optionally set to be reference types for stable configuration dynamically
     /// </summary>
     /// <typeparam name="T"></typeparam>
     [Serializable]
@@ -60,11 +113,11 @@ namespace EMILtools.Core
             {
                 // Only matters for non-stable users
                 if (!isStable) ThrowIfUserWasStabilized();
-                return (isStable) ? reference.val : val;
+                return (isStable) ? refval : val;
             }
             set
             {
-                if (isStable) reference.val = value;
+                if (isStable) refval = value;
                 else
                 {
                     ThrowIfUserWasStabilized();
@@ -72,21 +125,40 @@ namespace EMILtools.Core
                 }
             }
         }
+
+        public T refval
+        {
+            get { EnsureStabilization(); return reference.val; }
+            set { EnsureStabilization(); reference.val = value; }
+        }
         
+
         void ThrowIfUserWasStabilized()
         {
-            if (ConfigInitializer.stabilizedUsers.Contains(myUser)) throw new Exception(
+            if (Stabilizer.stabilizedUsers.Contains(myUser)) throw new Exception(
                 "Using a Stablizable outside of its owning user is forbidden. " +
                     "Do not copy the struct; pass its Value instead."
                 );
         }
 
-        public void Stabilize(IStablizableUser user)
+        /// <summary>
+        /// Only intended for use by the Stabilizer static class.
+        /// Stabilizing v
+        /// </summary>
+        /// <param name="user"></param>
+        public void Stabilize(IStablizableUser user, bool fromStabilizer = false)
         {
             myUser = user;
             if(reference == null) reference = new Ref<T>(val);
-            Debug.Log($"[Configurable] Successfully had my refernce initialized");
+            Debug.Log($"[Stablizable] Successfully Stabilized");
+
+            // Individual Stabilization, optionally incrementally and dynamically stabilize
+            // Check if this is from the stabilizer, avoids checking the hashset for every add in the stabilizer
+            if(!fromStabilizer)
+                if (!Stabilizer.stabilizedUsers.Contains(myUser)) Stabilizer.stabilizedUsers.Add(myUser);
         }
+
+        void EnsureStabilization() => reference ??= new Ref<T>(val);
         
         public static implicit operator T(Stablizable<T> c) => c.Value;
     }
