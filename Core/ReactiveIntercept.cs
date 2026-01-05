@@ -20,8 +20,8 @@ namespace EMILtools.Core
                 Reactions?.Invoke(baseValue);
             }
         }
-        public StableFuncList<T, T> Intercepts;
-        public StableAction<T> Reactions;
+        public PersistentFunc<T, T> Intercepts;
+        public PersistentAction<T> Reactions;
         
         public ReactiveIntercept(T initial)
         {
@@ -37,7 +37,7 @@ namespace EMILtools.Core
         // ----------------------------------------------------------------------------------
         public static ReactiveIntercept<T> operator +(ReactiveIntercept<T> ri, Func<T,T> cb)
         {
-            if(ri.Intercepts == null) ri.Intercepts = new StableFuncList<T, T>();
+            if(ri.Intercepts == null) ri.Intercepts = new PersistentFunc<T, T>();
             ri.Intercepts.Add(cb);
             return ri;
         }
@@ -49,7 +49,7 @@ namespace EMILtools.Core
         }
         public static ReactiveIntercept<T> operator +(ReactiveIntercept<T> ri, Action<T> cb)
         {
-            if (ri.Reactions == null) ri.Reactions = new StableAction<T>();
+            if (ri.Reactions == null) ri.Reactions = new PersistentAction<T>();
             ri.Reactions.Add(cb);
             return ri;
         }

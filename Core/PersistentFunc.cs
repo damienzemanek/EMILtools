@@ -13,21 +13,21 @@ namespace EMILtools.Core
     /// stores the location and auto assigns it.
     /// 
     /// </summary>
-    public sealed class StableFunc<T>
+    public sealed class PersistentFunc<T>
     {
         Func<T> _func;
         public T Invoke() => (_func != null) ? _func() : default;
-        public void Set(Func<T> cb) => _func = cb;
         public void Nullify() => _func = null;
-        public void Add(Func<T> cb) => _func += cb;
-        public void Remove(Func<T> cb) => _func -= cb;
+        public PersistentFunc<T> Set(Func<T> cb) { _func = cb; return this; }
+        public PersistentFunc<T> Add(Func<T> cb) {_func += cb; return this; }
+        public PersistentFunc<T> Remove(Func<T> cb) {_func -= cb; return this; }
     }
 
     /// <summary>
     /// A stable container for Func<T, T> delegates.
     /// Used for Intercepts to sequentially transform a value.
     /// </summary>
-    public sealed class StableFuncList<T, TResult>
+    public sealed class PersistentFunc<T, TResult>
         where TResult : T
     {
         readonly List<Func<T, T>> _funcs = new();
@@ -41,14 +41,13 @@ namespace EMILtools.Core
             return processed;
         }
     
-        public void Add(Func<T, T> cb) => _funcs.Add(cb);
-        public void Remove(Func<T, T> cb) => _funcs.Remove(cb);
-        public void Clear() => _funcs.Clear();
-
-        public void Add(params Func<T, T>[] cbs) {
-            foreach (var cb in cbs) Add(cb); }
-        public void Add(List<Func<T, T>> cbs) {
-            foreach (var cb in cbs) Add(cb); }
+        public PersistentFunc<T, TResult> Add(Func<T, T> cb) { _funcs.Add(cb); return this; }
+        public PersistentFunc<T, TResult> Remove(Func<T, T> cb)  { _funcs.Remove(cb); return this; }
+        public PersistentFunc<T, TResult> Clear()  { _funcs.Clear(); return this; }
+        public PersistentFunc<T, TResult> Add(params Func<T, T>[] cbs) {
+            foreach (var cb in cbs) Add(cb); return this; }
+        public PersistentFunc<T, TResult> Add(List<Func<T, T>> cbs) {
+            foreach (var cb in cbs) Add(cb); return this; }
     }
 }
 

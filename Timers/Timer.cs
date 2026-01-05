@@ -14,9 +14,9 @@ namespace EMILtools.Timers
         public float Progress => Time / initialTime.Value;
         public float Duration => initialTime.Value;
         
-        public StableAction OnTimerStart = new();
-        public StableAction OnTimerStop = new();
-        public StableAction OnTimerTick = new();
+        public PersistentAction OnTimerStart = new();
+        public PersistentAction OnTimerStop = new();
+        public PersistentAction OnTimerTick = new();
 
         public Timer(float _initialTime)
             => initialTime.Value = _initialTime;

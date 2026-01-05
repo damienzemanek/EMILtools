@@ -87,7 +87,7 @@ namespace EMILtools.Timers
                 return itimeruser;
             }
             
-            public static ITimerUser Sub(this ITimerUser itimeruser, StableAction targEvent, Action cb)
+            public static ITimerUser Sub(this ITimerUser itimeruser, PersistentAction targEvent, Action cb)
             {
                 if(targEvent == null || cb == null) return itimeruser;
 

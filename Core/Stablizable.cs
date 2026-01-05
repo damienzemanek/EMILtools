@@ -95,7 +95,7 @@ namespace EMILtools.Core
 
     
     /// <summary>
-    /// Value-types that can be optionally set to be reference types for stable configuration dynamically
+    /// Value-types that can be optionally and or dynamically set to be reference types for stable configuration 
     /// </summary>
     /// <typeparam name="T"></typeparam>
     [Serializable]

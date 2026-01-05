@@ -18,25 +18,26 @@ namespace EMILtools.Core
     ///   of Hooks and call Unsubscribe on a stable target, even if other objects have subscribed/unsubscribed in the meantime.
     /// - Fluent API Support: Enables the <c>.Sub().Sub()</c> chaining pattern by providing a consistent object to return and operate upon.
     /// </remarks>
-    public sealed class StableAction<T>
+    public sealed class PersistentAction<T>
     {
         Action<T> _action = delegate { };
         
         public void Invoke(T value) => _action?.Invoke(value);
-        public void Add(Action<T> cb) => _action += cb;
-        public void Remove(Action<T> cb) => _action -= cb;
+        public PersistentAction<T> Add(Action<T> cb) { _action += cb; return this; }
+        public PersistentAction<T> Remove(Action<T> cb) { _action -= cb; return this; }
     }
 
     /// <summary>
     /// Non-generic version for simple triggers
     /// </summary>
-    public sealed class StableAction
+    public sealed class PersistentAction
     {
         Action _action = delegate { };
 
         public void Invoke() => _action?.Invoke();
-        public void Add(Action cb) => _action += cb;
-        public void Remove(Action cb) => _action -= cb;
+        public PersistentAction Add(Action cb) { _action += cb; return this; }
+
+        public PersistentAction Remove(Action cb) { _action -= cb; return this; }
 
         public void Add(Action[] cbs)
             { foreach (var cb in cbs) Add(cb); }

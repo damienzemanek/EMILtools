@@ -22,12 +22,12 @@ namespace EMILtools
         /// </remarks>
         public sealed class TimerHook
         {
-            private readonly StableAction targEvent;
+            private readonly PersistentAction targEvent;
             readonly Action cb;
             
-            public StableAction Event => targEvent;
+            public PersistentAction Event => targEvent;
                 
-            public TimerHook(StableAction _targEvent, Action _cb)
+            public TimerHook(PersistentAction _targEvent, Action _cb)
             {
                 targEvent = _targEvent;
                 cb = _cb;
