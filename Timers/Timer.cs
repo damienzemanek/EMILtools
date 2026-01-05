@@ -6,9 +6,9 @@ using EMILtools.Core;
 namespace EMILtools.Timers
 {
     [Serializable]
-    public abstract class Timer
+    public abstract class Timer : IStablizableUser
     {
-        protected Configureable<float> initialTime;
+        protected Stablizable<float> initialTime;
         protected float Time { get; set; }
         public bool isRunning { get; protected set; } = false;
         public float Progress => Time / initialTime.Value;
@@ -18,10 +18,10 @@ namespace EMILtools.Timers
         public StableAction OnTimerStop = new();
         public StableAction OnTimerTick = new();
 
-        public Timer(float _initialTime, bool isRef = false)
-            => initialTime.Initialize(_initialTime, isRef);
+        public Timer(float _initialTime)
+            => initialTime.Value = _initialTime;
         
-        public Timer(float _initialTime, bool isRef = false,
+        public Timer(float _initialTime,
                 Action[] OnTimerStartCbs = null,
                 Action[] OnTimerTickCbs = null,
                 Action[] OnTimerStopCbs = null)
@@ -29,8 +29,8 @@ namespace EMILtools.Timers
             if(OnTimerStartCbs != null && OnTimerStartCbs.Length > 0) OnTimerStart.Add(OnTimerStartCbs);
             if(OnTimerTickCbs != null && OnTimerTickCbs.Length > 0) OnTimerTick.Add(OnTimerTickCbs);
             if(OnTimerStopCbs != null && OnTimerStopCbs.Length > 0) OnTimerStop.Add(OnTimerStopCbs);
-            
-            initialTime.Initialize(_initialTime, isRef);
+
+            initialTime.Value = _initialTime;
             isRunning = false;
         }
 
