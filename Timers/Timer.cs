@@ -2,6 +2,7 @@
 using EMILtools.Extensions;
 using EMILtools.Signals;
 using EMILtools.Core;
+using static EMILtools.Core.Stabilizer;
 
 namespace EMILtools.Timers
 {
@@ -11,15 +12,15 @@ namespace EMILtools.Timers
         protected Stablizable<float> initialTime;
         protected float Time { get; set; }
         public bool isRunning { get; protected set; } = false;
-        public float Progress => Time / initialTime.Value;
-        public float Duration => initialTime.Value;
+        public float Progress => Time / initialTime.Get;
+        public float Duration => initialTime.Get;
         
         public PersistentAction OnTimerStart = new();
         public PersistentAction OnTimerStop = new();
         public PersistentAction OnTimerTick = new();
 
         public Timer(float _initialTime)
-            => initialTime.Value = _initialTime;
+            => initialTime.stack = _initialTime;
         
         public Timer(float _initialTime,
                 Action[] OnTimerStartCbs = null,
@@ -30,19 +31,19 @@ namespace EMILtools.Timers
             if(OnTimerTickCbs != null && OnTimerTickCbs.Length > 0) OnTimerTick.Add(OnTimerTickCbs);
             if(OnTimerStopCbs != null && OnTimerStopCbs.Length > 0) OnTimerStop.Add(OnTimerStopCbs);
 
-            initialTime.Value = _initialTime;
+            initialTime.stack = _initialTime;
             isRunning = false;
         }
 
         public void Start()
         {
-            if (initialTime.Value <= 0)
+            if (initialTime.Get <= 0)
             {
                 this.Warn("Please set an initial time for this timer");
                 return;
             }
 
-            Time = initialTime.Value;
+            Time = initialTime.Get;
             if (!isRunning)
             {
                 isRunning = true;

@@ -13,6 +13,7 @@ namespace EMILtools.Core
     /// stores the location and auto assigns it.
     /// 
     /// </summary>
+    [Serializable]
     public sealed class PersistentFunc<T>
     {
         Func<T> _func;
@@ -27,6 +28,7 @@ namespace EMILtools.Core
     /// A stable container for Func<T, T> delegates.
     /// Used for Intercepts to sequentially transform a value.
     /// </summary>
+    [Serializable]
     public sealed class PersistentFunc<T, TResult>
         where TResult : T
     {

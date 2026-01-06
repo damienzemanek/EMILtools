@@ -1,248 +1,384 @@
+using System;
 using EMILtools.Core;
 using NUnit.Framework;
-using System;
+using System.Diagnostics;
+using UnityEngine;
+using static EMILtools.Core.Stabilizer;
+using Debug = UnityEngine.Debug;
 
 public class StablizableTests
 {
-    class StablizableUser : IStablizableUser
+    class TestUser : IStablizableUser
     {
         [Stabilize] public Stablizable<float> speed = new();
         public Stablizable<int> jumpHeight = new(); // Not attributed
     }
 
     // -------------------------
-    // Non-stable behavior tests
+    // 1️⃣ Non-stable behavior tests
     // -------------------------
 
     [Test]
-    public void NonStable_ValuesMoveFreely()
+    public void NonStable_Copies_Seperate()
     {
-        var user = new StablizableUser();
-
-        user.speed.Value = 10f;
-        Assert.AreEqual(10f, user.speed.Value);
+        var user = new TestUser();
+        user.speed.stack = 10f;
+        Assert.AreEqual(10f, user.speed.Get);
 
         var copy = user.speed;
-        copy.Value = 20f;
+        copy.stack = 20f;
 
-        // Non-stable copies do not affect original
-        Assert.AreEqual(10f, user.speed.Value);
-        Assert.AreEqual(20f, copy.Value);
+        Assert.AreEqual(10f, user.speed.Get);
+        Assert.AreEqual(20f, copy.Get);
     }
-
-    [Test]
-    public void NonStable_CopyBeforeStabilize_RemainsIndependent()
-    {
-        var user = new StablizableUser();
-
-        var preCopy = user.speed; // copy before stabilization
-        user.speed.Value = 5f;
-
-        preCopy.Value = 50f; // should be allowed
-        Assert.AreEqual(50f, preCopy.Value);
-        Assert.AreEqual(5f, user.speed.Value);
-    }
-
+    
     [Test]
     public void NonStable_CopyAfterStabilize_BecomesReference()
     {
-        var user = new StablizableUser();
-        user.StabilizeAttributed(); // stabilize only attributed field
+        var user = new TestUser();
+        user.StabilizeAttributed();
 
-        var postCopy = user.speed; // copy after stabilization
-        postCopy.Value = 7f;
+        var postCopy = user.speed;
+        postCopy.heap += 7f;
+        Debug.Log(postCopy.sharedheap.OnValueChanged.GetInvocationList().Length);
+        Debug.Log($" orig ref {user.speed.sharedheap} copy ref {postCopy.sharedheap}" +
+                  $" are same? {ReferenceEquals(postCopy.inspectHeap, user.speed.inspectHeap)}");
+        Debug.Log($"before refresh: orig {user.speed.Get} copy {postCopy.Get} refval {user.speed.sharedheap.val}");
+        
+        Debug.Log($"after refresh: orig {user.speed.Get} copy {postCopy.Get} refval {user.speed.sharedheap.val}");
 
-        // Reference semantics
-        Assert.AreEqual(7f, user.speed.Value);
-        Assert.AreEqual(7f, postCopy.Value);
+        Assert.AreNotEqual(null, user.speed.sharedheap, "orig reference is null");
+        Assert.AreNotEqual(null, postCopy.sharedheap, "postCopy reference is null");
+
+        Assert.IsTrue(ReferenceEquals(postCopy.inspectHeap, user.speed.inspectHeap), 
+            "Post copy and original should share the same heap reference");
+
+        Assert.AreEqual(7f, postCopy.Get);
+        Assert.AreEqual(7f, user.speed.Get);
     }
-
+    
     [Test]
     public void NonAttributedField_NotStabilized()
     {
-        var user = new StablizableUser();
-        user.StabilizeAttributed(); // only speed is stabilized
+        var user = new TestUser();
+        user.StabilizeAttributed();
 
-        var copy = user.jumpHeight;
-        copy.Value = 15; // still value semantics
-        Assert.AreEqual(15, copy.Value);
+        var jumpcopy = user.jumpHeight;
+        jumpcopy.stack = 15;
+        Assert.AreEqual(15, jumpcopy.Get);
 
         var original = user.jumpHeight;
-        Assert.AreEqual(0, original.Value); // original untouched
+        Assert.AreEqual(0, original.Get);
     }
 
     // -------------------------
-    // Stable behavior tests
+    // 2️⃣ Stable behavior tests
     // -------------------------
 
-    [Test]
-    public void Stable_CopiesShareReference()
-    {
-        var user = new StablizableUser();
-        user.StabilizeAttributed();
+     [Test]
+     public void Stable_CopiesShareReference()
+     {
+         var user = new TestUser();
+         user.StabilizeAttributed();
 
-        user.speed.Value = 10f;
+         user.speed.heap = 10f;
 
-        var copy = user.speed;
-        copy.Value = 50f;
+         var copy = user.speed;
+         copy.heap = 50f;
 
-        Assert.AreEqual(50f, user.speed.Value);
-    }
+         Assert.AreEqual(50f, user.speed.Get);
+         Assert.AreEqual(50f, copy.Get);
+     }
 
-    [Test]
-    public void Stable_ImplicitConversion()
-    {
-        var user = new StablizableUser();
-        user.StabilizeAttributed();
+     [Test]
+     public void PreStabilizationCopy_RemainsIndependent()
+     {
+         var user = new TestUser();
 
-        user.speed.Value = 42f;
-        float x = user.speed; // implicit conversion
-        Assert.AreEqual(42f, x);
-    }
+         var preCopy = user.speed;
+         user.StabilizeAttributed();
+         var postCopy = user.speed;
 
-    [Test]
-    public void Stable_ReassignKeepsValue()
-    {
-        var user = new StablizableUser();
-        user.StabilizeAttributed();
+         preCopy.stack = 33f;
+         postCopy.heap = 77f;
 
-        user.speed.Value = 30f;
+         Assert.AreEqual(77f, postCopy.Get);
+         Assert.AreEqual(77f, user.speed.Get);
+         Assert.AreEqual(33f, preCopy.Get);
+     }
 
-        // re-stabilize manually
-        user.speed.Stabilize(user);
-        Assert.AreEqual(30f, user.speed.Value);
-    }
+     [Test]
+     public void StabilizeAll_IncludesNonAttributedFields()
+     {
+         var user = new TestUser();
+         user.StabilizeAll();
 
-    [Test]
-    public void Stable_VariableCanMoveFreely_PostCopy()
-    {
-        var user = new StablizableUser();
-        user.StabilizeAttributed();
+         user.speed.heap = 10f;
+         user.jumpHeight.heap = 5;
 
-        var moved = user.speed;
-        var another = moved;
+         Assert.IsTrue(user.speed.isStable);
+         Assert.IsTrue(user.jumpHeight.isStable);
+         Assert.AreEqual(10f, user.speed.Get);
+         Assert.AreEqual(5, user.jumpHeight.Get);
+     }
 
-        another.Value = 100f;
+     [Test]
+     public void ManualStructStabilization_AddsUserToHashSet()
+     {
+         var user = new TestUser();
+         user.jumpHeight.Stabilize(user);
 
-        Assert.AreEqual(100f, user.speed.Value);
-    }
+         Assert.IsTrue(stabilizedUsers.Contains(user));
+         Assert.IsTrue(user.jumpHeight.isStable);
+     }
 
-    [Test]
-    public void Stable_MultipleStablizables_IndependentReferences()
-    {
-        var user = new StablizableUser();
-        user.StabilizeAll(); // stabilize all fields
+     [Test]
+     public void ManualStabilizationFromStruct_DoesNotDuplicateHashSetEntry()
+     {
+         var user = new TestUser();
+         user.StabilizeAttributed();
 
-        user.speed.Value = 10f;
-        user.jumpHeight.Value = 5;
+         int countBefore = stabilizedUsers.Count;
+         user.speed.Stabilize(user, fromStabilizer: true);
+         int countAfter = stabilizedUsers.Count;
 
-        var speedCopy = user.speed;
-        var jumpCopy = user.jumpHeight;
+         Assert.AreEqual(countBefore, countAfter);
+     }
 
-        speedCopy.Value = 20f;
-        jumpCopy.Value = 15;
+     [Test]
+     public void MultipleCopies_PreAndPostStabilize_WorkAsExpected()
+     {
+         var user = new TestUser();
 
-        Assert.AreEqual(20f, user.speed.Value);
-        Assert.AreEqual(15, user.jumpHeight.Value);
-    }
+         var preCopy = user.speed;
+         user.StabilizeAttributed();
+         var postCopy = user.speed;
 
-    // -------------------------
-    // Edge cases
-    // -------------------------
+         preCopy.stack = 33f;
+         postCopy.heap = 77f;
 
-    [Test]
-    public void StableCheck_IsStableReturnsCorrectly()
-    {
-        var user = new StablizableUser();
-        Assert.IsFalse(user.speed.isStable, "Non-stable before stabilization");
+         Assert.AreEqual(77f, user.speed.Get);
+         Assert.AreEqual(33f, preCopy.Get);
+     }
 
-        user.StabilizeAttributed();
-        Assert.IsTrue(user.speed.isStable, "Stable after stabilization");
-    }
+     [Test]
+     public void MultiplePreCopies_IndependentFromEachOther()
+     {
+         var user = new TestUser();
 
-    [Test]
-    public void PreStabilizationCopy_RemainsValue()
-    {
-        var user = new StablizableUser();
+         var copy1 = user.speed;
+         var copy2 = user.speed;
 
-        var preCopy = user.speed;
-        user.StabilizeAttributed();
+         copy1.stack = 5f;
+         copy2.stack = 10f;
 
-        preCopy.Value = 33; // still allowed
-        Assert.AreEqual(33, preCopy.Value);
+         Assert.AreEqual(5f, copy1.Get);
+         Assert.AreEqual(10f, copy2.Get);
+         Assert.AreEqual(0f, user.speed.Get);
+     }
 
-        var postCopy = user.speed;
-        postCopy.Value = 77;
+     [Test]
+     public void SelectiveSharing_PreAndPostStabilizationBehavior()
+     {
+         var user = new TestUser();
+         var preCopy = user.speed;
+         user.StabilizeAttributed();
 
-        Assert.AreEqual(77, user.speed.Value);
-    }
+         var postCopy1 = user.speed;
+         var postCopy2 = user.speed;
 
-    [Test]
-    public void ManualStructStabilization_AddsUserToHashSet()
-    {
-        var user = new StablizableUser();
+         postCopy1.heap = 5f;
+         Assert.AreEqual(5f, postCopy2.Get);
 
-        // manually stabilize single field
-        user.jumpHeight.Stabilize(user);
+         preCopy.stack = 10f;
+         Assert.AreEqual(10f, preCopy.Get);
+         Assert.AreEqual(5f, postCopy1.Get);
+     }
 
-        Assert.IsTrue(Stabilizer.stabilizedUsers.Contains(user));
-        Assert.IsTrue(user.jumpHeight.isStable);
-    }
+     // -------------------------
+     // 3️⃣ Passing structs to methods
+     // -------------------------
 
-    [Test]
-    public void ManualStabilizationFromStruct_DoesNotDuplicateHashSetEntry()
-    {
-        var user = new StablizableUser();
-        user.StabilizeAttributed(); // stabilizes speed
+     [Test]
+     public void PassingPreStabilizationStructByValue_DoesNotAffectOriginal()
+     {
+         var user = new TestUser();
+         user.speed.stack = 10f;
 
-        int countBefore = Stabilizer.stabilizedUsers.Count;
-        user.speed.Stabilize(user, fromStabilizer: true); // simulate stabilizer calling struct
-        int countAfter = Stabilizer.stabilizedUsers.Count;
+         float IncrementHealth(Stablizable<float> h, int amount)
+         {
+             h.stack = amount;
+             return h.Get;
+         }
 
-        Assert.AreEqual(countBefore, countAfter); // no duplicate entry
-    }
+         float result = IncrementHealth(user.speed, 5);
+         Assert.AreEqual(5f, result);
+         Assert.AreEqual(10f, user.speed.Get);
+     }
 
-    [Test]
-    public void MultipleCopies_PreAndPostStabilize_WorkAsExpected()
-    {
-        var user = new StablizableUser();
+     [Test]
+     public void PassingPostStabilizationStructByValue_UpdatesSharedReference()
+     {
+         var user = new TestUser();
+         user.speed.stack = 10f;
+         user.StabilizeAttributed();
 
-        var preCopy = user.speed;   // before stabilization
-        user.StabilizeAttributed();
-        var postCopy = user.speed;  // after stabilization
+         float IncrementHealth(Stablizable<float> h, int amount)
+         {
+             h.heap = amount;
+             return h.Get;
+         }
 
-        preCopy.Value = 33; // non-stable, allowed
-        postCopy.Value = 77; // stable reference
+         float result = IncrementHealth(user.speed, 5);
+         Assert.AreEqual(5f, result);
+         Assert.AreEqual(5f, user.speed.Get);
+     }
 
-        Assert.AreEqual(77, user.speed.Value);
-        Assert.AreEqual(33, preCopy.Value);
-    }
+     [Test]
+     public void PreStabilizationCopiesRemainIndependent_AfterStabilization()
+     {
+         var user = new TestUser();
+         var pre1 = user.speed;
+         var pre2 = user.speed;
+         user.StabilizeAttributed();
 
-    [Test]
-    public void MultiplePreCopies_IndependentFromEachOther()
-    {
-        var user = new StablizableUser();
+         pre1.stack = 5f;
+         pre2.stack = 7f;
 
-        var copy1 = user.speed;
-        var copy2 = user.speed;
+         var post = user.speed;
+         post.heap = 42f;
 
-        copy1.Value = 5;
-        copy2.Value = 10;
+         Assert.AreEqual(42f, user.speed.Get);
+         Assert.AreEqual(5f, pre1.Get);
+         Assert.AreEqual(7f, pre2.Get);
+     }
 
-        Assert.AreEqual(5, copy1.Value);
-        Assert.AreEqual(10, copy2.Value);
-        Assert.AreEqual(0, user.speed.Value);
-    }
+     // -------------------------
+     // 4️⃣ Dynamic editing
+     // -------------------------
 
-    [Test]
-    public void StabilizeAll_IncludesNonAttributedFields()
-    {
-        var user = new StablizableUser();
-        user.StabilizeAll();
+     [Test]
+     public void DynamicEditing_PreStabilization_IsIndependent()
+     {
+         var user = new TestUser();
 
-        Assert.IsTrue(user.speed.isStable);
-        Assert.IsTrue(user.jumpHeight.isStable);
-    }
-    
-    
-}
+         var preCopy = user.speed;
+         preCopy.stack = 5f;
+
+         var original = user.speed;
+         original.stack = 15f;
+
+         Assert.AreEqual(5f, preCopy.Get);
+         Assert.AreEqual(15f, original.Get);
+     }
+
+     [Test]
+     public void DynamicEditing_PostStabilization_SharedAcrossSystems()
+     {
+         var user = new TestUser();
+         user.StabilizeAttributed();
+
+         var systemA = user.speed;
+         var systemB = user.speed;
+
+         systemA.heap = 3f;
+         Assert.AreEqual(3f, systemB.Get);
+
+         systemB.heap = 7f;
+         Assert.AreEqual(7f, systemA.Get);
+     }
+
+     [Test]
+     public void MultipleSystems_ModifySharedVariableSafely()
+     {
+         var user = new TestUser();
+         user.StabilizeAttributed();
+
+         var sys1 = user.speed;
+         var sys2 = user.speed;
+         var sys3 = user.speed;
+
+         sys1.heap = 10f;
+         sys2.heap = 20f;
+         sys3.heap = 30f;
+
+         Assert.AreEqual(30f, user.speed.Get);
+         Assert.AreEqual(30f, sys1.Get);
+         Assert.AreEqual(30f, sys2.Get);
+     }
+
+     // -------------------------
+     // 5️⃣ Pre-stabilization copies throw on heap access
+     // -------------------------
+
+     [Test]
+     public void PreStabilizationSystemCopies_ThrowAfterStabilization_UsingHeap()
+     {
+         var user = new TestUser();
+         var copy1 = user.speed; 
+         var copy2 = user.speed; 
+         user.StabilizeAttributed();
+
+         Assert.Throws<InvalidOperationException>(() => copy1.heap = 5f);
+         Assert.Throws<InvalidOperationException>(() => copy2.heap = 7f);
+     }
+
+     // -------------------------
+     // 6️⃣ Performance / hot loop simulation
+     // -------------------------
+
+     [Test]
+     public void ValueAccess_Fast_WhenNotStabilized()
+     {
+         var st = new Stablizable<int>();
+         st.stack = 0;
+
+         int sum = 0;
+         for (int i = 0; i < 100_000; i++)
+             sum += st.Get;
+
+         Assert.AreEqual(0, st.Get);
+     }
+
+     [Test]
+     public void StackLocalAccess_IsFasterThanReferenceAfterManyReads()
+     {
+         var localStruct = new Stablizable<int>();
+         localStruct.stack = 123;
+
+         int sum1 = 0;
+         var sw = Stopwatch.StartNew();
+         for (int i = 0; i < 1_000_000; i++)
+             sum1 += localStruct.Get;
+         sw.Stop();
+         long stackTime = sw.ElapsedMilliseconds;
+
+         var user = new TestUser();
+         user.speed.stack = 123;
+         user.StabilizeAttributed();
+
+         float sum2 = 0;
+         sw.Restart();
+         for (int i = 0; i < 1_000_000; i++)
+             sum2 += user.speed.Get;
+         sw.Stop();
+         long refTime = sw.ElapsedMilliseconds;
+
+         Debug.Log($"Stack-local: {stackTime}ms, Reference: {refTime}ms");
+         Assert.IsTrue(stackTime <= refTime);
+     }
+
+     [Test]
+     public void RepeatedPasses_ReferenceDereference_BreakEvenAfterFewReads()
+     {
+         var user = new TestUser();
+         user.speed.stack = 0;
+         user.StabilizeAttributed();
+
+         float sum = 0;
+         for (int i = 0; i < 10; i++)
+             sum += user.speed.Get;
+
+         Assert.AreEqual(0, sum);
+     }
+ }

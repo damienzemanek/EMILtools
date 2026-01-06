@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using EMILtools.Core;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
@@ -13,3 +16,13 @@ public class Ref<T> where T : struct
     public static implicit operator T(Ref<T> r) => (r != null) ? r.val : default;
 }
 
+
+[Serializable]
+[InlineProperty]
+public class RefSync<T> where T : struct
+{
+    public T val;
+    public Action OnValueChanged;
+    
+    public RefSync(T initialValue) => val = initialValue;
+}
