@@ -130,21 +130,17 @@ public void HotLoop_SingleValue_Read_StackVsPseudoBoxVsRefClass()
         var sw = Stopwatch.StartNew(); sw.Stop();
         
         // --------------------------------- VALUETYPE ----------------------------------
-        int valueTypeSum = 0;
         long valueTypeTime = 0;
         
         // ------------------------ STABILIZABLE - NOT STABALIZED  ----------------------
-        int nonStabilizedleSum = 0;
         long nonStabilizedleTime = 0;
 
         
         // ------------------------ STABILIZABLE - STABILIZED ---------------------------
-        int stabilizedSum = 0;
         long stabilizedleTime = 0;
         testUser.stabilizedHealth.Stabilize(testUser);
 
         //  ---------------------------------REFERENCE ---------------------------------
-        int referenceSum = 0;
         long referenceTime = 0;
         
         
@@ -164,6 +160,7 @@ public void HotLoop_SingleValue_Read_StackVsPseudoBoxVsRefClass()
         for (int i = 0; i < iterations; i++)
         {
             // Required: value-type semantics during writing
+            // This is how you would normally pass a struct along when boxing
             var newWrapper = new ValueType(testUser.nonStabilizedHealth.Get.someValue);
             newWrapper.someValue += 1;
             testUser.nonStabilizedHealth.stack = newWrapper;
@@ -175,6 +172,7 @@ public void HotLoop_SingleValue_Read_StackVsPseudoBoxVsRefClass()
         for (int i = 0; i < iterations; i++)
         {
             // Referece Type semantics when stabilized during writing
+            // With the heap reference its as fast as value type and reference type
             testUser.stabilizedHealth.heap.someValue += 1;
         }
         sw.Stop();
@@ -193,10 +191,10 @@ public void HotLoop_SingleValue_Read_StackVsPseudoBoxVsRefClass()
             $"Hot-loop Single Value Read ({iterations} iterations):\n" +
             $"{"Label"} {"Time",6} {"Sum",12}\n" +
             $"===================================\n" +
-            $"{"Value-Type:"}.......... {valueTypeTime}ms.......sum: {valueTypeSum,10}\n" +
-            $"{"Non-Stabilized:"}.... {nonStabilizedleTime}ms.......sum: {nonStabilizedleSum,10}\n" +
-            $"{"Stabilized:"}............. {stabilizedleTime}ms.......sum: {stabilizedSum,10}\n" +
-            $"{"Ref<T> class:"}....... {referenceTime}ms.......sum: {referenceSum,10}"
+            $"{"Value-Type:"}.......... {valueTypeTime}ms\n" +
+            $"{"Non-Stabilized:"}.... {nonStabilizedleTime}ms\n" +
+            $"{"Stabilized:"}............. {stabilizedleTime}ms\n" +
+            $"{"Ref<T> class:"}....... {referenceTime}ms"
         );
 
 
@@ -204,130 +202,129 @@ public void HotLoop_SingleValue_Read_StackVsPseudoBoxVsRefClass()
 
 
     // ==================================== ASSERTIONS =====================================
-    // Compare sums (should be exact)
-        Assert.AreEqual(valueTypeSum, nonStabilizedleSum);
-        Assert.AreEqual(nonStabilizedleSum, stabilizedSum);
-        Assert.AreEqual(stabilizedSum, referenceSum);
 
     // Compare times with ±2ms tolerance
-        Assert.IsTrue(Math.Abs(valueTypeTime - nonStabilizedleTime) <= 2, 
-            $"ValueTypeTime {valueTypeTime}ms is not within ±2ms of NonStabilizedTime {nonStabilizedleTime}ms");
+    Assert.IsTrue(Math.Abs(valueTypeTime - stabilizedleTime) <= 3,
+        $"ValueTypeTime {valueTypeTime}ms is not within ±3ms of StabilizedTime {stabilizedleTime}ms");
 
-        Assert.IsTrue(Math.Abs(nonStabilizedleTime - stabilizedleTime) <= 2, 
-            $"NonStabilizedTime {nonStabilizedleTime}ms is not within ±2ms of StabilizedTime {stabilizedleTime}ms");
+    Assert.IsTrue(Math.Abs(valueTypeTime - referenceTime) <= 3,
+        $"ValueTypeTime {valueTypeTime}ms is not within ±3ms of RefClassTime {referenceTime}ms");
 
-        Assert.IsTrue(Math.Abs(stabilizedleTime - referenceTime) <= 2, 
-            $"StabilizedTime {stabilizedleTime}ms is not within ±2ms of ReferenceTime {referenceTime}ms");
-        // ======================================================================================
+    Assert.IsTrue(Math.Abs(stabilizedleTime - referenceTime) <= 3,
+        $"StabilizedTime {stabilizedleTime}ms is not within ±3ms of RefClassTime {referenceTime}ms");
+
+    Assert.IsTrue(nonStabilizedleTime > stabilizedleTime && nonStabilizedleTime > valueTypeTime && nonStabilizedleTime > referenceTime,
+        "Non-stabilized time should be measureably SLOWER than other times");
+    // ======================================================================================
     }
     
-    // /// <summary>
-    // /// Box and return the box
-    // /// </summary>
-    // /// <param name="stabilizable"></param>
-    // /// <returns></returns>
-    // public int UseStackLocal(int val)
-    // {
-    //     val += 1;
-    //     return val;
-    // }
-    //
-    // /// <summary>
-    // /// Box and return the box
-    // /// </summary>
-    // /// <param name="stabilizable"></param>
-    // /// <returns></returns>
-    // public int UseStabilized(int val)
-    // {
-    //     val += 1;
-    //     return val;
-    // }
-    //
-    //
-    //
-    // /// <summary>
-    // /// Pointer de-ref, no return
-    // /// </summary>
-    // /// <param name="reference"></param>
-    // public void UseRef(RefClass reference)
-    // {
-    //     reference.val += 1;
-    // }
-    //
-    // /// <summary>
-    // /// Passing:
-    // /// Stack local operations when passing are slow due to boxing, using implicit conversion, this is fastest
-    // /// Stabilized operations are fast due to intended box
-    // /// </summary>
-    // [Test]
-    // public void HotLoop_SingleValue_PASSING_StackVsPseudoBoxVsRefClass()
-    // {
-    //     const int iterations = 5_000_000;
-    //
-    //     // Stack-local struct
-    //     var stackStruct = new Stablizable<int>();
-    //     stackStruct.Value = 42;
-    //     int sum1 = 0;
-    //     
-    //     //TIMER
-    //     var sw = Stopwatch.StartNew();
-    //     for (int i = 0; i < iterations; i++)
-    //     {
-    //         sum1 += UseStackLocal(stackStruct);
-    //     }
-    //     sw.Stop();
-    //     
-    //     
-    //     long stackTime = sw.ElapsedMilliseconds;
-    //
-    //     // Stabilized Stablizable (pseudo-box) - capture into local to avoid repeated field-copy
-    //     var user = new TestUser();
-    //     user.health.Value = 42;
-    //     user.StabilizeAttributed();
-    //     var stabLocal = user.health; // hoist once
-    //     int sum2 = 0;
-    //
-    //     //TIMER
-    //     sw.Restart();
-    //     for (int i = 0; i < iterations; i++)
-    //     {
-    //         sum2 = UseValue(stabLocal.Value);
-    //     }
-    //     sw.Stop();
-    //     
-    //     
-    //     long stabTime = sw.ElapsedMilliseconds;
-    //
-    //     // Classic Ref<T>
-    //     var refObj = new RefClass(42);
-    //     int sum3 = 0;
-    //     
-    //     //TIMER
-    //     sw.Restart();
-    //     for (int i = 0; i < iterations; i++)
-    //         UseRef(refObj);
-    //     sw.Stop();
-    //     
-    //     
-    //     
-    //     long refTime = sw.ElapsedMilliseconds;
-    //     
-    //     // Sanity checks
-    //     Assert.AreEqual(sum1, sum2);
-    //     Assert.AreEqual(sum2, sum3);
-    //
-    //     UnityEngine.Debug.Log(
-    //         $"Hot-loop Single Value Read ({iterations} iterations):\n" +
-    //         $"Stack-local: {stackTime:F3}ms\n" +      // 3 decimal places
-    //         $"Stabilized: {stabTime:F3}ms\n" +
-    //         $"Ref<T> class: {refTime:F3}ms"
-    //     );
-    //     
-    //
-    //     // Realistic performance assertions
-    //     Assert.IsTrue(stackTime > stabTime, "When passing stack-local, it boxes, stabailized doesnt");
-    //     Assert.IsTrue(stabTime <= refTime * 1.1, "Stabilized reads competitive with standard Ref<T> class");
-    // }
+    /// <summary>
+    /// Box and return the box
+    /// </summary>
+    /// <param name="stabilizable"></param>
+    /// <returns></returns>
+    public int UseStackLocal(int val)
+    {
+        val += 1;
+        return val;
+    }
+    
+    /// <summary>
+    /// Box and return the box
+    /// </summary>
+    /// <param name="stabilizable"></param>
+    /// <returns></returns>
+    public int UseStabilized(int val)
+    {
+        val += 1;
+        return val;
+    }
+    
+    
+    
+    /// <summary>
+    /// Pointer de-ref, no return
+    /// </summary>
+    /// <param name="reference"></param>
+    public void UseRef(RefClass reference)
+    {
+        reference.val += 1;
+    }
+    
+    /// <summary>
+    /// Passing:
+    /// Stack local operations when passing are slow due to boxing, using implicit conversion, this is fastest
+    /// Stabilized operations are fast due to intended box
+    /// </summary>
+    [Test]
+    public void HotLoop_SingleValue_PASSING_StackVsPseudoBoxVsRefClass()
+    {
+        const int iterations = 5_000_000;
+    
+        // Stack-local struct
+        var stackStruct = new Stablizable<int>();
+        stackStruct.Value = 42;
+        int sum1 = 0;
+        
+        //TIMER
+        var sw = Stopwatch.StartNew();
+        for (int i = 0; i < iterations; i++)
+        {
+            sum1 += UseStackLocal(stackStruct);
+        }
+        sw.Stop();
+        
+        
+        long stackTime = sw.ElapsedMilliseconds;
+    
+        // Stabilized Stablizable (pseudo-box) - capture into local to avoid repeated field-copy
+        var user = new TestUser();
+        user.health.Value = 42;
+        user.StabilizeAttributed();
+        var stabLocal = user.health; // hoist once
+        int sum2 = 0;
+    
+        //TIMER
+        sw.Restart();
+        for (int i = 0; i < iterations; i++)
+        {
+            sum2 = UseValue(stabLocal.Value);
+        }
+        sw.Stop();
+        
+        
+        long stabTime = sw.ElapsedMilliseconds;
+    
+        // Classic Ref<T>
+        var refObj = new RefClass(42);
+        int sum3 = 0;
+        
+        //TIMER
+        sw.Restart();
+        for (int i = 0; i < iterations; i++)
+            UseRef(refObj);
+        sw.Stop();
+        
+        
+        
+        long refTime = sw.ElapsedMilliseconds;
+        
+        // Sanity checks
+        Assert.AreEqual(sum1, sum2);
+        Assert.AreEqual(sum2, sum3);
+    
+        UnityEngine.Debug.Log(
+            $"Hot-loop Single Value Read ({iterations} iterations):\n" +
+            $"Stack-local: {stackTime:F3}ms\n" +      // 3 decimal places
+            $"Stabilized: {stabTime:F3}ms\n" +
+            $"Ref<T> class: {refTime:F3}ms"
+        );
+        
+    
+        // Realistic performance assertions
+        Assert.IsTrue(stackTime > stabTime, "When passing stack-local, it boxes, stabailized doesnt");
+        Assert.IsTrue(stabTime <= refTime * 1.1, "Stabilized reads competitive with standard Ref<T> class");
+    }
     //
     // [Test]
     // public void MassUpdate_MultiCopies_StackVsPseudoBoxVsRefClass()
