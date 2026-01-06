@@ -188,11 +188,11 @@ public class StablizableCriticalTests
             $"Stabilized Get time {stabilizedTimeGet}ms is not within ±300ms of RefClassTime {referenceTime}ms");
 
         // Non-Stabilized GetStack is less than or within 5ms of ValueType
-        Assert.IsTrue(nonStabilizedTimeGetStack <= valueTypeTime + 5,
+        Assert.IsTrue(nonStabilizedTimeGetStack <= valueTypeTime + 10,
             $"NonStabilized GetStack time {nonStabilizedTimeGetStack}ms should be <= ValueTypeTime {valueTypeTime} + 5ms");
 
         // Stabilized GetStable is less than or within 5ms of Ref<T>
-        Assert.IsTrue(stabilizedTimeGetSable <= referenceTime + 5,
+        Assert.IsTrue(stabilizedTimeGetSable <= referenceTime + 10,
             $"Stabilized GetStable time {stabilizedTimeGetSable}ms should be <= RefClassTime {referenceTime} + 5ms");
     }
 

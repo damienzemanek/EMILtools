@@ -6,46 +6,48 @@ namespace EMILtools.Core
 {
     /// <summary>
     /// Value-types that can optionally and dynamically be promoted to reference types for stable configuration.
-    /// 
-    /// Directions:
-    ///  - Use GetStack when the stability is known to be false; direct stack access is fast.
-    ///  - Use heap (RefBox) when stabilized; gives reference semantics safely.
-    ///  - Implicit conversion operator allows seamless use of Stablizable<T> as T.
     ///
-    /// Useful when:
-    /// - A system using value-types needs to be dynamically modified at runtime by another system.
-    ///       + Need to edit your structs or value-types in the Editor? Use Stabilizable.
-    /// - A system requires a reference-type, and that reference-type is frequently accessed in hot loops.
-    ///       + 1 pointer de-ref ≈ 4 stack-local accesses.
-    ///       + If you don't access this value often, the difference is negligible.
-    ///       + If you access this variable a lot, stack-local access will outperform pointer de-ref by magnitudes.
-    /// - You want selective reference-type sharing, meaning not all systems accessing this variable
-    ///   necessarily need a reference type.
-    ///       + Avoids unnecessary boxing. If the variable was a value-type, it would always be boxed when sent.
-    ///       + "Pseudo-boxes" promote the T value to a Ref<T>, which is lighter than a boxed T.
-    ///       + "Pseudo-boxes" only occur ONCE at Stabilization, rather than on every pass-through for value types.
+    /// Advantages:
+    /// - Reads are as fast as standard value-types:
+    ///     + Before stabilization: use <see cref="GetStack"/>
+    ///     + After stabilization: use implicit conversion or <see cref="GetStable"/>
+    /// - Writes are as fast as reference-types after stabilization using a stabilized RefBox.
+    /// 
+    ///
+    /// Use cases:
+    /// - Systems using value-types that require dynamic runtime modification.
+    ///     + Ideal for editing structs or value-types in the Editor.
+    /// - Systems that need a reference-type for frequent access in hot loops.
+    ///     + Stack-local access outperforms pointer de-references for frequently accessed variables.
+    /// - Selective reference-type sharing:
+    ///     + Avoid unnecessary boxing.
+    ///     + Pseudo-boxes promote T to Ref<T> once at stabilization instead of every pass-through.
     ///
     /// ------------------------------------- HOT LOOP TIMINGS -------------------------------------
     ///
     /// 50,000,000 (50 mil) iterations, single value reads/writes
-    /// 
-    ///  READ (ms):
-    ///    Value-Type:...................... 25-37
-    ///    Nested Value-Type:............... 19-24
-    ///    Non-Stabilized - Get:............ 48-338
-    ///    Non-Stabilized - GetStack:....... 40-407
-    ///    Stabilized (RefBox<ValueType>):.. 12
-    ///    Stabilized Implicit Conversion:.. 27-36
-    ///    Ref<T> class:.................... 12-42
-    /// 
-    ///  WRITE (ms):
-    ///    Value-Type (direct field):....... 28-108
-    ///    Nested Value-Type:............... 24-108
-    ///    Non-Stabilized - Get:............ 48-642
-    ///    Non-Stabilized - GetStack:....... 40-407
-    ///    Stabilized (RefBox<ValueType>):.. 12-108
-    ///    Ref<T> class:.................... 12-108
-    /// 
+    ///
+    ///                                 
+    /// READ (ms):
+    ///   Value-Type:........................ ~40
+    ///   Nested Value-Type:................. ~20
+    ///   Non-Stabilized - Get:.............. ~270
+    ///   Non-Stabilized - GetStack:......... ~40   *** Recommended
+    ///   Stabilized (RefBox<ValueType>):.... ~200
+    ///   Stabilized Implicit Conversion:.... ~40   *** Recommended
+    ///   Ref<T> class:...................... ~40
+    ///
+    /// WRITE (ms):
+    ///   Value-Type (direct field):.......... ~108  (pass by value only)
+    ///   Nested Value-Type:.................. ~108  (pass by value only)
+    ///   Non-Stabilized - Get:................ ~650 (pass by value first, can be ref)
+    ///   Non-Stabilized - GetStack:........... ~400 (pass by value first, can be ref)
+    ///   Stabilized (RefBox<ValueType>):..... ~108  (pass by reference)
+    ///   Ref<T> class:....................... ~108  (pass by ref only)
+    ///
+    /// Recommended usage:
+    ///   - Use GetStack for non-stabilized hot loops.
+    ///   - Use implicit conversion or GetStable for stabilized values.
     /// --------------------------------------------------------------------------------------------
     /// </summary>
     /// <typeparam name="T"></typeparam>
