@@ -2,52 +2,56 @@ using EMILtools.Core;
 using NUnit.Framework;
 using System;
 using System.Diagnostics;
-using static EMILtools.Core.Stabilizer;
+using static EMILtools.Core.AutoBoxer;
 
 public class StablizableCriticalTests
 {
-    class TestUser : IStablizableUser
+    class TestUser : IBoxUser
     {
         // Three forms of wrappers. Stabilizable is the best of both worlds
         // ----------------------------------------------------------------------------------------------------
         // 1: Struct -> Stack performance, Value-type semantics, Value-type passing (boxing)
         // 2: Stabilizable -> Stack performance, Value-type semantics, Reference-type passing
         // 3: Reference -> Heap performance, Reference-type semantics, Refernce Type passing
-        public ValueType valueTypeHealth = new ValueType(5);
-        public NestedValueType nestedValueTypeHealth = new NestedValueType(5);
-        public Stablizable<ValueType> nonStabilizedHealth = new Stablizable<ValueType>(new ValueType(5));
-        [Stabilize] public Stablizable<ValueType> stabilizedHealth = new Stablizable<ValueType>(new ValueType(5));
+        public ValueType valueType = new ValueType(5);
+        public NestedValueType nestedValueType = new NestedValueType(5);
 
-        public ReferenceType referencehealth = new(5);
+        public OptionalRef<ValueType> nestedOR_vt = new OptionalRef<ValueType>(new ValueType(5));
+        [AutoBox] public OptionalRef<ValueType> nestedOR_ref = new OptionalRef<ValueType>(new ValueType(5));
+
+        public OptionalRef<int> OR_valuetype = new(5);
+        [AutoBox] public OptionalRef<int> OR_reference = new(5);
+
+        public ReferenceType reference = new(5);
     }
-    
-    
+
+
     // Reference type passing, with value-type read/writing
-    
+
     // -------------------------
     // 1️⃣ Hot-loop read comparison
     // -------------------------
-    
+
 
     public class ReferenceType
     {
         public int someValue;
         public ReferenceType(int initial) => someValue = initial;
     }
-    
+
     public struct ValueType
     {
         public int someValue;
         public ValueType(int initial) => someValue = initial;
     }
-    
+
     public struct NestedValueType
     {
         public ValueType inner;
         public NestedValueType(int initial) => inner = new(initial);
     }
 
-    
+
     [Test]
     public void HotLoop_SingleValue_READ()
     {
@@ -56,605 +60,384 @@ public class StablizableCriticalTests
         // ==================================== SETUP =====================================
         var testUser = new TestUser();
         var sw = new System.Diagnostics.Stopwatch();
-        testUser.stabilizedHealth.Stabilize(testUser);
+        testUser.OR_reference.Box();
+        testUser.nestedOR_ref.Box();
 
-        // --------------------------------- VALUETYPE ----------------------------------
+        // ------------------------------ ValueType ----------------------------------
         int valueTypeSum = 0;
         long valueTypeTime = 0;
-        
-        // -------------------------------Nested VALUETYPE ----------------------------------
+
+        // ------------------------------- ValueType (Nested) ------------------------
         int nestedVTsum = 0;
         long nestedVTtime = 0;
 
+        // ------------------------------ OptionalRef - Value (Nested) --------------
+        int OR_NestedValueSum = 0;
+        long OR_NestedValueTime = 0;
 
-        // ------------------ STABILIZABLE - NOT STABILIZED - Get ----------------------
-        int nonStabilizedSumGet = 0;
-        long nonStabilizedTimeGet = 0;
-        
-        // ------------------ STABILIZABLE - NOT STABILIZED - GetStack ----------------------
-        int nonStabilizedSumGetStack = 0;
-        long nonStabilizedTimeGetStack = 0;
+        // ------------------------------ OptionalRef - stack (Nested) --------------
+        int OR_NestedstackSum = 0;
+        long OR_NestedstackTime = 0;
 
-        // ------------------------ STABILIZABLE - STABILIZED - Get ---------------------------
-        int stabilizedSumGet = 0;
-        long stabilizedTimeGet = 0;
+        // ------------------------------ OptionalRef - heap  (Nested)--------------
+        int OR_NestedheapSum = 0;
+        long OR_NestedheapTime = 0;
+
+        // ------------------------------ OptionalRef - Value ---------------------
+        int OR_ValueSum = 0;
+        long OR_ValueTime = 0;
+
+        // ------------------------------ OptionalRef - stack  --------------------
+        int OR_StackSum = 0;
+        long OR_StackTime = 0;
+
+        // ------------------------------ OptionalRef - heapReadOnly  --------------------
+        int OR_HeapReadOnlySum = 0;
+        long OR_HeapReadOnlyTime = 0;
         
-        // ------------------ STABILIZABLE - STABILIZED - GetStable ----------------------
-        int stabilizedSumGetStable = 0;
-        long stabilizedTimeGetSable = 0;
+        // ------------------------------ OptionalRef - FastHeap via stack  --------------------
+        int OR_FastHeapSum = 0;
+        long OR_FastHeapTime = 0;
 
         // ---------------------------------REFERENCE ---------------------------------
-        int referenceSum = 0;
-        long referenceTime = 0;
+        int refSum = 0;
+        long refTime = 0;
 
         // ==================================== EXECUTE =====================================
 
-        // --------------------------------- VALUETYPE ----------------------------------
+        // ------------------------------ ValueType ----------------------------------
         sw.Restart();
         for (int i = 0; i < iterations; i++)
         {
-            valueTypeSum += testUser.valueTypeHealth.someValue;
+            valueTypeSum += testUser.valueType.someValue;
         }
+
         sw.Stop();
         valueTypeTime = sw.ElapsedMilliseconds;
-        
-        // ------------------------------ Nested VALUETYPE --------------------------------
+
+        // ------------------------------- ValueType (Nested) ------------------------
         sw.Restart();
         for (int i = 0; i < iterations; i++)
         {
-            nestedVTsum += testUser.nestedValueTypeHealth.inner.someValue;
+            nestedVTsum += testUser.nestedValueType.inner.someValue;
         }
+
         sw.Stop();
         nestedVTtime = sw.ElapsedMilliseconds;
-        
-        // ------------------------ STABILIZABLE - NOT STABILIZED - Get ----------------------
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            nonStabilizedSumGet += testUser.nonStabilizedHealth.Get.someValue;
-        }
-        sw.Stop();
-        nonStabilizedTimeGet = sw.ElapsedMilliseconds;
-        
-        // ------------------------ STABILIZABLE - NOT STABILIZED - GetStack  ----------------------
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            nonStabilizedSumGetStack += testUser.nonStabilizedHealth.GetStack.someValue;
-        }
-        sw.Stop();
-        nonStabilizedTimeGetStack = sw.ElapsedMilliseconds;
 
-        // ------------------------ STABILIZABLE - STABILIZED - Get ---------------------------
+        // ------------------------------ OptionalRef - Value (Nested) --------------
         sw.Restart();
         for (int i = 0; i < iterations; i++)
         {
-            stabilizedSumGet += testUser.stabilizedHealth.Get.someValue;
+            OR_NestedValueSum += testUser.nestedOR_vt.Value.someValue;
         }
+
         sw.Stop();
-        stabilizedTimeGet = sw.ElapsedMilliseconds;
+        OR_NestedValueTime = sw.ElapsedMilliseconds;
+
+        // ------------------------------ OptionalRef - stack (Nested) --------------
+        sw.Restart();
+        for (int i = 0; i < iterations; i++)
+        {
+            OR_NestedstackSum += testUser.nestedOR_vt.stack.someValue;
+        }
+
+        sw.Stop();
+        OR_NestedstackTime = sw.ElapsedMilliseconds;
+
+        // ------------------------------ OptionalRef - heap  (Nested)--------------
+        sw.Restart();
+        for (int i = 0; i < iterations; i++)
+        {
+            OR_NestedheapSum += testUser.nestedOR_ref.heap.someValue;
+        }
+
+        sw.Stop();
+        OR_NestedheapTime = sw.ElapsedMilliseconds;
+
+        // ------------------------------ OptionalRef - Value ---------------------
+        sw.Restart();
+        for (int i = 0; i < iterations; i++)
+        {
+            OR_ValueSum += testUser.OR_valuetype.Value;
+        }
+
+        sw.Stop();
+        OR_ValueTime = sw.ElapsedMilliseconds;
+
+        // ------------------------------ OptionalRef - stack  --------------------
+        sw.Restart();
+        for (int i = 0; i < iterations; i++)
+        {
+            OR_StackSum += testUser.OR_valuetype.stack;
+        }
+
+        sw.Stop();
+        OR_StackTime = sw.ElapsedMilliseconds;
+
+        // ------------------------------ OptionalRef - heapReadOnly  --------------------
+        sw.Restart();
+        for (int i = 0; i < iterations; i++)
+        {
+            OR_HeapReadOnlySum += testUser.OR_reference.heapReadOnly;
+        }
+
+        sw.Stop();
+        OR_HeapReadOnlyTime = sw.ElapsedMilliseconds;
         
-        // ------------------------ STABILIZABLE - STABILIZED - GetStable ---------------------------
+        // ------------------------------ OptionalRef - FastHeap  --------------------
         sw.Restart();
         for (int i = 0; i < iterations; i++)
         {
-            stabilizedSumGetStable += testUser.stabilizedHealth.GetStable.someValue;
+            // To edit the heap and auto-refresh it, use FastHeap
+            // this means that you can directly read from the stack after edits
+            OR_FastHeapSum += testUser.OR_reference.stack;
         }
+
         sw.Stop();
-        stabilizedTimeGetSable = sw.ElapsedMilliseconds;
+        OR_FastHeapTime = sw.ElapsedMilliseconds;
 
         // ---------------------------------REFERENCE ---------------------------------
         sw.Restart();
         for (int i = 0; i < iterations; i++)
         {
-            referenceSum += testUser.referencehealth.someValue;
+            refSum += testUser.reference.someValue;
         }
+
         sw.Stop();
-        referenceTime = sw.ElapsedMilliseconds;
-        
-        
+        refTime = sw.ElapsedMilliseconds;
+
+
         UnityEngine.Debug.Log(
-            $"Hot-loop Single Value Read ({iterations} iterations):\n" +
-            $"Label   Time      Sum" +
-            $"===============================================================================================================\n" +
-            $"VT: Value-Type:................................... {valueTypeTime}ms \n" +
-            $"VT: Nested Value-Type:...................... {nestedVTtime}ms  \n" +
-            $"VT: Non-Stabilized - Get:.................... {nonStabilizedTimeGet}ms \n" +
-            $"VT: Non-Stabilized - GetStack:........... {nonStabilizedTimeGetStack}ms  \n" +
-            $"RT: Stabilized - Get :............................ {stabilizedTimeGet}ms \n" +
-            $"RT: Stabilized - GetStable:.................. {stabilizedTimeGetSable}ms \n" +
-            $"RT: Ref<T> class:................................. {referenceTime}ms "
+            $"Hot-loop Single Value Read ({iterations:N0} iterations)\n" +
+            $"Label                                               Time (ms)        Sum\n" +
+            $"=====================================================================\n" +
+            $"Value-Type *                                                  {valueTypeTime,6} *   {valueTypeSum}\n" +
+            $"Nested Value-Type *                                     {nestedVTtime,6} *   {nestedVTsum}\n" +
+            $"OptionalRef (Nested) - Value                         {OR_NestedValueTime,6}    {OR_NestedValueSum}\n" +
+            $"OptionalRef (Nested) - Stack *                      {OR_NestedstackTime,6} *   {OR_NestedstackSum}\n" +
+            $"OptionalRef (Nested) - Heap                         {OR_NestedheapTime,6}    {OR_NestedheapSum}\n" +
+            $"OptionalRef - Value                                        {OR_ValueTime,6}    {OR_ValueSum}\n" +
+            $"OptionalRef - Stack *                                     {OR_StackTime,6} *   {OR_StackSum}\n" +
+            $"OptionalRef - Heap (heapReadOnly)             {OR_HeapReadOnlyTime,6}    {OR_HeapReadOnlySum}\n" +
+            $"OptionalRef - After FastHeap (via stack) *    {OR_FastHeapTime,6} *   {OR_FastHeapSum}\n" +
+            $"Reference Type                                            {refTime,6}    {refSum}\n"
         );
         
-        
+        // ================================ RANGE DEBUG ==================================
+
+        long vt_vs_orStack = Math.Abs(valueTypeTime - OR_StackTime);
+        long nvt_vs_nestedOrStack = Math.Abs(nestedVTtime - OR_NestedstackTime);
+        long fastheap_vs_vt = Math.Abs(valueTypeTime - OR_FastHeapTime);
+
+        UnityEngine.Debug.Log(
+            $"Range Deltas (ms)\n" +
+            $"---------------------------------------------\n" +
+            $"Value-Type vs OptionalRef-Stack        : {vt_vs_orStack} ms\n" +
+            $"Nested Value-Type vs Nested OR-Stack   : {nvt_vs_nestedOrStack} ms\n" +
+            $"After FastHeap via stack vs Value-Type   : {fastheap_vs_vt} ms"
+        );
+        //===============================================================================
+
+        GC.KeepAlive(
+            valueTypeSum + nestedVTsum +
+            OR_NestedValueSum + OR_NestedstackSum + OR_NestedheapSum +
+            OR_ValueSum + OR_StackSum + OR_HeapReadOnlySum + OR_FastHeapSum +
+            refSum
+        );
+
         // ================================ ASSERTIONS ==================================
-        Assert.IsTrue((valueTypeSum == nestedVTsum) &&
-                      (nestedVTsum == nonStabilizedSumGet) &&
-                      (nonStabilizedSumGet == nonStabilizedSumGetStack) &&
-                      (nonStabilizedSumGetStack == stabilizedSumGet) &&
-                      (stabilizedSumGet == stabilizedSumGetStable) &&
-                      (stabilizedSumGetStable == referenceSum) &&
-                      (referenceSum == nestedVTsum));
+        int expectedSum = valueTypeSum;
+
+        Assert.AreEqual(expectedSum, nestedVTsum);
+        Assert.AreEqual(expectedSum, OR_NestedValueSum);
+        Assert.AreEqual(expectedSum, OR_NestedstackSum);
+        Assert.AreEqual(expectedSum, OR_NestedheapSum);
+        Assert.AreEqual(expectedSum, OR_ValueSum);
+        Assert.AreEqual(expectedSum, OR_StackSum);
+        Assert.AreEqual(expectedSum, OR_HeapReadOnlySum);
+        Assert.AreEqual(expectedSum, OR_FastHeapSum);
+        Assert.AreEqual(expectedSum, refSum);
+
+        long baseline = valueTypeTime;
+        const long tolerance = 10;
+
+        Assert.IsTrue(Math.Abs(OR_NestedstackTime - baseline) <= tolerance,
+            $"OR Nested Stack {OR_NestedstackTime}ms not within ±{tolerance}ms of ValueType {baseline}ms");
+
+        Assert.IsTrue(Math.Abs(OR_StackTime - baseline) <= tolerance,
+            $"OR Stack {OR_StackTime}ms not within ±{tolerance}ms of ValueType {baseline}ms");
         
-        //  ValueType and NestedValueType within 40ms
-        Assert.IsTrue(Math.Abs(valueTypeTime - nestedVTtime) <= 40,
-            $"ValueTypeTime {valueTypeTime}ms is not within ±40ms of NestedValueTypeTime {nestedVTtime}ms");
-
-        // Non-Stabilized Get and Stabilized Get are within 300ms of Ref<T>
-        Assert.IsTrue(Math.Abs(nonStabilizedTimeGet - referenceTime) <= 300,
-            $"NonStabilized Get time {nonStabilizedTimeGet}ms is not within ±300ms of RefClassTime {referenceTime}ms");
-
-        Assert.IsTrue(Math.Abs(stabilizedTimeGet - referenceTime) <= 300,
-            $"Stabilized Get time {stabilizedTimeGet}ms is not within ±300ms of RefClassTime {referenceTime}ms");
-
-        // Non-Stabilized GetStack is less than or within 5ms of ValueType
-        Assert.IsTrue(nonStabilizedTimeGetStack <= valueTypeTime + 10,
-            $"NonStabilized GetStack time {nonStabilizedTimeGetStack}ms should be <= ValueTypeTime {valueTypeTime} + 5ms");
-
-        // Stabilized GetStable is less than or within 5ms of Ref<T>
-        Assert.IsTrue(stabilizedTimeGetSable <= referenceTime + 10,
-            $"Stabilized GetStable time {stabilizedTimeGetSable}ms should be <= RefClassTime {referenceTime} + 5ms");
+        Assert.IsTrue(Math.Abs(OR_FastHeapTime - baseline) <= tolerance,
+            $"OR Stack {OR_FastHeapTime}ms not within ±{tolerance}ms of ValueType {baseline}ms");
+        
     }
 
-    
     [Test]
-    public void HotLoop_SingleValue_WRITE_StackVsPseudoBoxVsRefClass()
+    public void HotLoop_SingleValue_WRITE()
     {
         const int iterations = 50_000_000;
 
         // ==================================== SETUP =====================================
         var testUser = new TestUser();
-        var sw = Stopwatch.StartNew(); sw.Stop();
-        testUser.stabilizedHealth.Stabilize(testUser);
+        var sw = new System.Diagnostics.Stopwatch();
+        testUser.OR_reference.Box();
+        testUser.nestedOR_ref.Box();
 
-        
-        // --------------------------------- VALUETYPE ----------------------------------
+        // ------------------------------ ValueType ----------------------------------
         long valueTypeTime = 0;
 
-        // ------------------------- Nested VALUETYPE  ----------------------------------
+        // ------------------------------- ValueType (Nested) ------------------------
         long nestedVTtime = 0;
-        
-        // ------------------------ STABILIZABLE - NOT STABALIZED - Get  -------------------
-        long nonStabilizedleGetTime = 0;
 
-        // ------------------------ STABILIZABLE - NOT STABALIZED - GetStack  ---------------
-        long nonStabilizedleGetStackTime = 0;
-        
-        // ------------------------ STABILIZABLE - STABILIZED ---------------------------
-        long stabilizedleTime = 0;
+        // ------------------------------ OptionalRef - Value (Nested) --------------
+        long OR_NestedValueTime = 0;
 
-        //  ---------------------------------REFERENCE ---------------------------------
-        long referenceTime = 0;
-        
-        
+        // ------------------------------ OptionalRef - stack (Nested) --------------
+        long OR_NestedstackTime = 0;
+
+        // ------------------------------ OptionalRef - heap  (Nested)--------------
+        long OR_NestedheapTime = 0;
+
+        // ------------------------------ OptionalRef - Value ---------------------
+        long OR_ValueTime = 0;
+
+        // ------------------------------ OptionalRef - stack  --------------------
+        long OR_StackTime = 0;
+
+        // ------------------------------ OptionalRef - heap  )--------------------
+        long OR_HeapTime = 0;
+
+        // ---------------------------------REFERENCE ---------------------------------
+        long refTime = 0;
+
         // ==================================== EXECUTE =====================================
 
-        
-        // --------------------------------- VALUETYPE ----------------------------------
+        // ------------------------------ ValueType ----------------------------------
         sw.Restart();
         for (int i = 0; i < iterations; i++)
         {
-            // Direct field assignment
-            testUser.valueTypeHealth.someValue += 1;
+            testUser.valueType.someValue += 1;
         }
+
         sw.Stop();
         valueTypeTime = sw.ElapsedMilliseconds;
-        
-        // ----------------------------- Nested VALUETYPE ----------------------------------
+
+        // ------------------------------- ValueType (Nested) ------------------------
         sw.Restart();
         for (int i = 0; i < iterations; i++)
         {
-            // Compiler still does read-modify-write (Slow)
-            testUser.nestedValueTypeHealth.inner.someValue += 1;
+            testUser.nestedValueType.inner.someValue += 1;
         }
+
         sw.Stop();
         nestedVTtime = sw.ElapsedMilliseconds;
-        
-        // ------------------------ STABILIZABLE - NOT STABALIZED - Get  ----------------------
-        // NOT RECOMENDED
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            // Required: Read-modify-write
-            // This is how you would normally write to a value type outside its context
-            var newWrapper = new ValueType(testUser.nonStabilizedHealth.Get.someValue);
-            newWrapper.someValue += 1;
-            testUser.nonStabilizedHealth.stack = newWrapper;
-        }
-        sw.Stop();
-        nonStabilizedleGetTime = sw.ElapsedMilliseconds;
-        
-                
-        // ------------------------ STABILIZABLE - NOT STABALIZED - GetStack  ----------------------
-        // NOT RECOMMENDED
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            // Required: Read-modify-write
-            // This is how you would normally write to a value type outside its context
-            var newWrapper = new ValueType(testUser.nonStabilizedHealth.GetStack.someValue);
-            newWrapper.someValue += 1;
-            testUser.nonStabilizedHealth.stack = newWrapper;
-        }
-        sw.Stop();
-        nonStabilizedleGetStackTime = sw.ElapsedMilliseconds;
-        
-        // ------------------------ STABILIZABLE - STABILIZED ---------------------------
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            // Reference Type semantics when stabilized during writing
-            // With the heap reference, it's as fast as value type and reference type
-            // No read-modify-write
-            testUser.stabilizedHealth.heap.someValue += 1;
-        }
-        sw.Stop();
-        stabilizedleTime = sw.ElapsedMilliseconds;
 
-        //  ---------------------------------REFERENCE ---------------------------------
+        // ------------------------------ OptionalRef - Value (Nested) --------------
         sw.Restart();
         for (int i = 0; i < iterations; i++)
         {
-            testUser.referencehealth.someValue += 1;
+            // Not Recommended
+
+            var temp = testUser.nestedOR_vt.Value;
+            temp.someValue += 1;
+            testUser.nestedOR_vt.stack = temp;
         }
+
         sw.Stop();
-        referenceTime = sw.ElapsedMilliseconds;
+        OR_NestedValueTime = sw.ElapsedMilliseconds;
+
+        // ------------------------------ OptionalRef - stack (Nested) --------------
+        sw.Restart();
+        for (int i = 0; i < iterations; i++)
+        {
+            // Not Recommended
+            var temp = testUser.nestedOR_ref.stack;
+            temp.someValue += 1;
+            testUser.nestedOR_vt.stack = temp;
+        }
+
+        sw.Stop();
+        OR_NestedstackTime = sw.ElapsedMilliseconds;
+
+        // ------------------------------ OptionalRef - heap  (Nested)--------------
+        sw.Restart();
+        for (int i = 0; i < iterations; i++)
+        {
+            testUser.nestedOR_ref.heap.someValue += 1;
+        }
+
+        sw.Stop();
+        OR_NestedheapTime = sw.ElapsedMilliseconds;
+
+        // ------------------------------ OptionalRef - Value ---------------------
+
+        // has no setter for refernce semantics
+
+        // ------------------------------ OptionalRef - stack  --------------------
+        sw.Restart();
+        for (int i = 0; i < iterations; i++)
+        {
+            testUser.OR_valuetype.stack += 1;
+        }
+
+        sw.Stop();
+        OR_StackTime = sw.ElapsedMilliseconds;
+
+        // ------------------------------ OptionalRef - heap  )--------------------
+        sw.Restart();
+        for (int i = 0; i < iterations; i++)
+        {
+            testUser.OR_reference.heap += 1;
+        }
+
+        sw.Stop();
+        OR_HeapTime = sw.ElapsedMilliseconds;
+
+        // ---------------------------------REFERENCE ---------------------------------
+        sw.Restart();
+        for (int i = 0; i < iterations; i++)
+        {
+            testUser.reference.someValue += 1;
+        }
+
+        sw.Stop();
+        refTime = sw.ElapsedMilliseconds;
 
 
         UnityEngine.Debug.Log(
-            $"Hot-loop Single Value Read ({iterations} iterations):\n" +
-            $"Label   Time      Sum" +
-            $"===============================================================================================================\n" +
-            $"VT: Value-Type:................................... {valueTypeTime}ms \n" +
-            $"VT: Nested Value-Type:...................... {nestedVTtime}ms  \n" +
-            $"VT: Non-Stabilized - Get:.................... {nonStabilizedleGetTime}ms \n" +
-            $"VT: Non-Stabilized - GetStack:.......... {nonStabilizedleGetStackTime}ms  \n" +
-            $"RT: Stabilized :..................................... {stabilizedleTime}ms \n" +
-            $"RT: Ref<T> class:................................. {referenceTime}ms "
+            $"Hot-loop Single Value Read ({iterations:N0} iterations)\n" +
+            $"Label                                               Time (ms)        Sum\n" +
+            $"=====================================================================\n" +
+            $"Value-Type                                                   {valueTypeTime,6}    \n" +
+            $"Nested Value-Type                                      {nestedVTtime,6}    \n" +
+            $"OptionalRef (Nested) - Value                       {OR_NestedValueTime,6}    \n" +
+            $"OptionalRef (Nested) - Stack                      {OR_NestedstackTime,6}    \n" +
+            $"OptionalRef (Nested) - Heap *                     {OR_NestedheapTime,6} *   \n" +
+            $"OptionalRef - Value                                         n/a    \n" +
+            $"OptionalRef - Stack                                      {OR_StackTime,6}    \n" +
+            $"OptionalRef - Heap *                                    {OR_HeapTime,6} *   \n" +
+            $"Reference Type *                                          {refTime,6} *   \n"
         );
-
-
-
-
-        // ==================================== ASSERTIONS =====================================
-
-        // Assert that value-type, nested value type, stabilized, and Ref<T> class are all within 15ms of each other
-        Assert.LessOrEqual(Math.Abs(valueTypeTime - nestedVTtime), 15, "Value-Type vs Nested Value-Type timing difference too high");
-        Assert.LessOrEqual(Math.Abs(valueTypeTime - stabilizedleTime), 15, "Value-Type vs Stabilized timing difference too high");
-        Assert.LessOrEqual(Math.Abs(valueTypeTime - referenceTime), 15, "Value-Type vs Ref<T> timing difference too high");
-        Assert.LessOrEqual(Math.Abs(nestedVTtime - stabilizedleTime), 15, "Nested Value-Type vs Stabilized timing difference too high");
-        Assert.LessOrEqual(Math.Abs(nestedVTtime - referenceTime), 15, "Nested Value-Type vs Ref<T> timing difference too high");
-        Assert.LessOrEqual(Math.Abs(stabilizedleTime - referenceTime), 15, "Stabilized vs Ref<T> timing difference too high");
-
-        // Assert that Non-Stabilized GetStack is faster than Non-Stabilized Get
-        Assert.Less(nonStabilizedleGetStackTime, nonStabilizedleGetTime, "Non-Stabilized GetStack should be faster than Non-Stabilized Get");
-
-        // Assert that Stabilized is faster than both Non-Stabilized Get and Non-Stabilized GetStack
-        Assert.Less(stabilizedleTime, nonStabilizedleGetTime, "Stabilized should be faster than Non-Stabilized Get");
-        Assert.Less(stabilizedleTime, nonStabilizedleGetStackTime, "Stabilized should be faster than Non-Stabilized GetStack");
-        // ======================================================================================
-    }
-    
-    
-    public void PassInValueType(ValueType vt) { }
-    public void PassInNestedValueType(NestedValueType vt) { }
-    public void PassInNonStable(Stablizable<ValueType> ns) { }
-    public void PassInStableSpecificParam(IRefBox s) { }
-    public void PassInStableImplicitConversion(ValueType s) { }
-    public void PassInReference(ReferenceType rt) { }
-    
-    
-    [Test]
-    public void HotLoop_SingleValue_PASSINGinMETHOD()
-    {
-        const int iterations = 50_000_000;
-
-        // ==================================== SETUP =====================================
-        var testUser = new TestUser();
-        var sw = Stopwatch.StartNew(); sw.Stop();
-        testUser.stabilizedHealth.Stabilize(testUser);
         
-        // --------------------------------- VALUETYPE ----------------------------------
-        long valueTypeTime = 0;
-        // ---------------------------- Nested VALUETYPE ----------------------------------
-        long nestedVTtime = 0;
-        
-        // ------------------------ STABILIZABLE - NOT STABALIZED  ----------------------
-        long nonStabilizedleTime = 0;
-
-        
-        // ------------------------ STABILIZABLE - STABILIZED ---------------------------
-        long refBoxStabilizedTime = 0;
-        long implicitconversionStabilizedTime = 0;
-
-        //  ---------------------------------REFERENCE ---------------------------------
-        long referenceTime = 0;
-        
-        
-        // ==================================== EXECUTE =====================================
-
-        
-        // --------------------------------- VALUETYPE ----------------------------------
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            // Limtation: Pass by value
-            PassInValueType(testUser.valueTypeHealth);
-        }
-        sw.Stop();
-        valueTypeTime = sw.ElapsedMilliseconds;
-        // --------------------------------- VALUETYPE ----------------------------------
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            // Limtation: Pass by value
-            PassInNestedValueType(testUser.nestedValueTypeHealth);
-        }
-        sw.Stop();
-        nestedVTtime = sw.ElapsedMilliseconds;
-        // ------------------------ STABILIZABLE - NOT STABALIZED  ----------------------
-        // NOT RECCOMENDED
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            // Limtation: Pass by value
-            PassInNonStable(testUser.nonStabilizedHealth);
-        }
-        sw.Stop();
-        nonStabilizedleTime = sw.ElapsedMilliseconds;
-        // ------------------------ STABILIZABLE - STABILIZED ---------------------------
-        //                        RefBox<ValueType> Method Param 
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            // Advantage: Psuedo-boxes
-            PassInStableSpecificParam(testUser.stabilizedHealth.param);
-        }
-        sw.Stop();
-        refBoxStabilizedTime = sw.ElapsedMilliseconds;
-        
-        // ------------------------ STABILIZABLE - STABILIZED ---------------------------
-        //          ValueType Method Param (Implicit conversion - Slowest)
-
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            // Not reccomended
-            PassInStableImplicitConversion(testUser.stabilizedHealth.param);
-        }
-        sw.Stop();
-        implicitconversionStabilizedTime = sw.ElapsedMilliseconds;
-        
-        //  ---------------------------------REFERENCE ---------------------------------
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            PassInReference(testUser.referencehealth);
-        }
-        sw.Stop();
-        referenceTime = sw.ElapsedMilliseconds;
-
-
         UnityEngine.Debug.Log(
-            $"Hot-loop Single Value Read ({iterations} iterations):\n" +
-            $"{"Label"} {"Time",6} {"Sum",12}\n" +
-            $"===================================\n" +
-            $"{"VT: Value-Type:"}........................................................ {valueTypeTime}ms\n" +
-            $"{"VT: Nested Value-Type:"}........................................ {nestedVTtime}ms\n" +
-            $"{"VT: Non-Stabilized:"}................................................. {nonStabilizedleTime}ms\n" +
-            $"{"VT:Stabilized Implicit Conversin param:"}..............{implicitconversionStabilizedTime}ms\n" +
-            $"{"RT: Stabilized (RefBox<ValueType> param:"}........ {refBoxStabilizedTime}ms\n" +
-            $"{"RT: Ref<T> class:"}.............................................. {referenceTime}ms"
+            $"Range Deltas (ms)\n" +
+            $"---------------------------------------------------------\n" +
+            $"OptionalRef (Nested) - Heap vs Reference Type: {Math.Abs(OR_NestedheapTime - refTime)}ms\n" +
+            $"OptionalRef - Heap vs Reference Type:          {Math.Abs(OR_HeapTime - refTime)}ms\n"
         );
         
+        // ================================ TIME ASSERTIONS ==================================
+        // Tolerance for starred rows (OptionalRef Nested Heap, OptionalRef Heap, Reference Type)
+        int tolerance = 10;
 
+        Assert.IsTrue(Math.Abs(OR_NestedheapTime - OR_HeapTime) <= tolerance,
+            $"OptionalRef Nested-Heap time {OR_NestedheapTime}ms differs from OptionalRef-Heap time {OR_HeapTime}ms by more than {tolerance}ms");
 
-        // ==================================== ASSERTIONS =====================================
-// Value-Type vs Nested Value-Type within 10ms
-        Assert.LessOrEqual(Math.Abs(valueTypeTime - nestedVTtime), 10, "Value-Type and Nested Value-Type timing difference too high");
+        Assert.IsTrue(Math.Abs(OR_HeapTime - refTime) <= tolerance,
+            $"OptionalRef-Heap time {OR_HeapTime}ms differs from Reference Type time {refTime}ms by more than {tolerance}ms");
 
-// Ref<T> class vs Stabilized (RefBox<ValueType>) may vary due to JIT
-        Assert.LessOrEqual(Math.Abs(referenceTime - refBoxStabilizedTime), Math.Max(referenceTime, refBoxStabilizedTime) + 5, 
-            "Ref<T> class and Stabilized (RefBox<ValueType>) timing difference unexpectedly high");
-
-// Stabilized Implicit Conversion vs Value-Type within 10ms
-        Assert.LessOrEqual(Math.Abs(implicitconversionStabilizedTime - valueTypeTime), 10, "Stabilized Implicit Conversion and Value-Type timing difference too high");
-
-// Non-Stabilized should remain the slowest
-        Assert.Greater(nonStabilizedleTime, valueTypeTime, "Non-Stabilized should be slower than Value-Type");
-        Assert.Greater(nonStabilizedleTime, nestedVTtime, "Non-Stabilized should be slower than Nested Value-Type");
-        Assert.Greater(nonStabilizedleTime, refBoxStabilizedTime, "Non-Stabilized should be slower than Stabilized RefBox");
-        Assert.Greater(nonStabilizedleTime, implicitconversionStabilizedTime, "Non-Stabilized should be slower than Stabilized Implicit Conversion");
-        Assert.Greater(nonStabilizedleTime, referenceTime, "Non-Stabilized should be slower than Ref<T> class");
-
-// Stabilized RefBox and Ref<T> class are generally faster, but may occasionally be slightly slower than Nested Value-Type (esp when nesteds are SMALL)
-        Assert.LessOrEqual(refBoxStabilizedTime, nonStabilizedleTime, "Stabilized RefBox should be faster than Non-Stabilized");
-        Assert.LessOrEqual(referenceTime, nonStabilizedleTime, "Ref<T> class should be faster than Non-Stabilized");
-    }
-
-    // Limitation: Pass by value
-    public void PassAndUseInValueType(ValueType vt)
-    {
-        // compiler copy-read-write
-        vt.someValue += 1;
-    }
-    // Limitation: Pass by value
-    public void PassAndUseInNestedValueType(NestedValueType vt)
-    {
-        // compiler copy-read-write
-        vt.inner.someValue += 1;
-    }
-    // Not reccomended
-    public void PassAndUseInNonStable(Stablizable<ValueType> ns)
-    {
-        // copy-read-write
-        var temp = ns.GetStack;
-        temp.someValue += 1;
-        ns.stack = temp;
-    }
-
-    // Advantage: Pass by Reference
-    public void PassAndUseInStableRefBox(IRefBox s)
-    {
-        ((RefBox<ValueType>)s).unbox.someValue += 1;
-    }
-    // Advantage: Pass by Reference
-    public void PassAndUseInStableSpecificRefBox(RefBox<ValueType> s)
-    {
-        s.unbox.someValue += 1;
-    }
-    
-    public void PassAndUseInStableImplicitConversion(ValueType s)
-    {
-        s.someValue += 1;
-    }
-
-    public void PassAndUseInReference(ReferenceType rt)
-    {
-        rt.someValue += 1;
-    }
-    
-    
-    [Test]
-    public void HotLoop_SingleValue_PASSandUSEinMETHOD()
-    {
-        const int iterations = 50_000_000;
-
-        // ==================================== SETUP =====================================
-        var testUser = new TestUser();
-        var sw = Stopwatch.StartNew(); sw.Stop();
-        testUser.stabilizedHealth.Stabilize(testUser);
-        
-        // --------------------------------- VALUETYPE ----------------------------------
-        long valueTypeTime = 0;
-        // --------------------------------- VALUETYPE ----------------------------------
-        long nestedVTtime = 0;
-        
-        // ------------------------ STABILIZABLE - NOT STABALIZED  ----------------------
-        long nonStabilizedleTime = 0;
-        
-        // ------------------------ STABILIZABLE - STABILIZED ---------------------------
-        long refBoxIRefBoxStableTime = 0;
-        long refBoxSpecificStableTime = 0;
-        long implicitConverstionStableTime = 0;
-
-        //  ---------------------------------REFERENCE ---------------------------------
-        long referenceTime = 0;
-        
-        
-        // ==================================== EXECUTE =====================================
-
-        
-        // --------------------------------- VALUETYPE ----------------------------------
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            // Limtation: Pass by value
-            PassAndUseInValueType(testUser.valueTypeHealth);
-        }
-        sw.Stop();
-        valueTypeTime = sw.ElapsedMilliseconds;
-        // ------------------------------ Nested VALUETYPE --------------------------------
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            // Limtation: Pass by value
-            PassAndUseInNestedValueType(testUser.nestedValueTypeHealth);
-        }
-        sw.Stop();
-        nestedVTtime = sw.ElapsedMilliseconds;
-        // ------------------------ STABILIZABLE - NOT STABALIZED  ----------------------
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            // Limtation: Pass by value
-            PassAndUseInNonStable(testUser.nonStabilizedHealth);
-        }
-        sw.Stop();
-        nonStabilizedleTime = sw.ElapsedMilliseconds;
-        // ------------------------ STABILIZABLE - STABILIZED ---------------------------
-        //                         IRefBox Method Param 
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            // Advantage: Psuedo-boxes
-            PassAndUseInStableRefBox(testUser.stabilizedHealth.param);
-        }
-        sw.Stop();
-        refBoxIRefBoxStableTime = sw.ElapsedMilliseconds;
-        
-        // ------------------------ STABILIZABLE - STABILIZED ---------------------------
-        //                        RefBox<ValueType> Method Param 
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            // Advantage: Psuedo-boxes
-            PassAndUseInStableSpecificRefBox(testUser.stabilizedHealth.param);
-        }
-        sw.Stop();
-        refBoxSpecificStableTime = sw.ElapsedMilliseconds;
-        
-        // ------------------------ STABILIZABLE - STABILIZED ---------------------------
-        //   ValueType Method Param (Implicit conversion ~ About as fast as Value-type Boxing)
-
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            // Not Reccomended, although works
-            // Use GetStable for already stable Valuetype passes. That will avoid 
-            PassAndUseInStableImplicitConversion(testUser.stabilizedHealth.param);
-        }
-        sw.Stop();
-        implicitConverstionStableTime = sw.ElapsedMilliseconds;
-        
-        //  ---------------------------------REFERENCE ---------------------------------
-        sw.Restart();
-        for (int i = 0; i < iterations; i++)
-        {
-            PassAndUseInReference(testUser.referencehealth);
-        }
-        sw.Stop();
-        referenceTime = sw.ElapsedMilliseconds;
-
-
-        UnityEngine.Debug.Log(
-            $"Hot-loop Single Value Read ({iterations} iterations):\n" +
-            $"{"Label"} {"Time",6} {"Sum",12}\n" +
-            $"===================================\n" +
-            $"{"VT: Stabilized Implicit Conversin param:"}.......... {implicitConverstionStableTime}ms\n" +
-            $"{"VT: Value-Type:"}................................................ {valueTypeTime}ms\n" +
-            $"{"VT: Nested Value-Type:"}................................... {nestedVTtime}ms\n" +
-            $"{"VT: Non-Stabilized:"}.......................................... {nonStabilizedleTime}ms\n" +
-            $"{"RT: Stabilized IRefBox param:"}......................... {refBoxIRefBoxStableTime}ms\n" +
-            $"{"RT: Stabilized Specific RefBox param:"}........... {refBoxSpecificStableTime}ms\n" +
-            $"{"RT: Ref<T> class:"}............................................ {referenceTime}ms"
-        );
-
-
-        // ==================================== ASSERTIONS =====================================
-
-        // All value-types should be within 20ms of each other
-        Assert.LessOrEqual(Math.Abs(valueTypeTime - nestedVTtime), 20, "Value-Type and Nested Value-Type timing difference too high");
-        Assert.LessOrEqual(Math.Abs(valueTypeTime - implicitConverstionStableTime), 20, "Value-Type and Stabilized Implicit Conversion timing difference too high");
-        Assert.LessOrEqual(Math.Abs(nestedVTtime - implicitConverstionStableTime), 20, "Nested Value-Type and Stabilized Implicit Conversion timing difference too high");
-
-        // Non-Stabilized should be much slower than all value-types
-        Assert.Greater(nonStabilizedleTime, valueTypeTime * 5, "Non-Stabilized should be significantly slower than Value-Type");
-        Assert.Greater(nonStabilizedleTime, nestedVTtime * 5, "Non-Stabilized should be significantly slower than Nested Value-Type");
-        Assert.Greater(nonStabilizedleTime, implicitConverstionStableTime * 5, "Non-Stabilized should be significantly slower than Stabilized Implicit Conversion");
-
-        // All reference-type passes should be within 20ms of each other
-        long maxRefTime = Math.Max(Math.Max(refBoxIRefBoxStableTime, refBoxSpecificStableTime), referenceTime);
-        long minRefTime = Math.Min(Math.Min(refBoxIRefBoxStableTime, refBoxSpecificStableTime), referenceTime);
-        Assert.LessOrEqual(maxRefTime - minRefTime, 20, "All reference-type passes should be within 20ms of each other");
-
-        // Reference-types should generally be slower than value-types (except non-stabilized) 
-        Assert.Greater(refBoxIRefBoxStableTime, valueTypeTime, "Stabilized IRefBox param should be slower than Value-Type");
-        Assert.Greater(refBoxSpecificStableTime, valueTypeTime, "Stabilized Specific RefBox param should be slower than Value-Type");
-        Assert.Greater(referenceTime, valueTypeTime, "Ref<T> class should be slower than Value-Type");
-
-        Assert.Less(nonStabilizedleTime, refBoxIRefBoxStableTime * 3, "Non-Stabilized should still be slower than most RefBox passes (sanity check)");
-        // ========================================================================================
-
+        Assert.IsTrue(Math.Abs(OR_NestedheapTime - refTime) <= tolerance,
+            $"OptionalRef Nested-Heap time {OR_NestedheapTime}ms differs from Reference Type time {refTime}ms by more than {tolerance}ms");
     }
 }

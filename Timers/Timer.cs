@@ -2,18 +2,18 @@
 using EMILtools.Extensions;
 using EMILtools.Signals;
 using EMILtools.Core;
-using static EMILtools.Core.Stabilizer;
+using static EMILtools.Core.AutoBoxer;
 
 namespace EMILtools.Timers
 {
     [Serializable]
-    public abstract class Timer : IStablizableUser
+    public abstract class Timer : IBoxUser
     {
-        protected Stablizable<float> initialTime;
+        protected OptionalRef<float> initialTime;
         protected float Time { get; set; }
         public bool isRunning { get; protected set; } = false;
-        public float Progress => Time / initialTime.Get;
-        public float Duration => initialTime.Get;
+        public float Progress => Time / initialTime.Value;
+        public float Duration => initialTime.Value;
         
         public PersistentAction OnTimerStart = new();
         public PersistentAction OnTimerStop = new();
@@ -37,13 +37,13 @@ namespace EMILtools.Timers
 
         public void Start()
         {
-            if (initialTime.Get <= 0)
+            if (initialTime.Value <= 0)
             {
                 this.Warn("Please set an initial time for this timer");
                 return;
             }
 
-            Time = initialTime.Get;
+            Time = initialTime.Value;
             if (!isRunning)
             {
                 isRunning = true;

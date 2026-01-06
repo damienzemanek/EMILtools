@@ -27,7 +27,7 @@ namespace EMILtools.Timers
         }
 
         public bool isFinished() => Time <= 0;
-        public void Reset() => Time = initialTime.Get;
+        public void Reset() => Time = initialTime.Value;
         public void Reset(float newInitialTime) => Time = newInitialTime;
             
     }   
