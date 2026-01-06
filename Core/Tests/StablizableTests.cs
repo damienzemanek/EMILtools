@@ -40,12 +40,11 @@ public class StablizableTests
 
         var postCopy = user.speed;
         postCopy.heap += 7f;
-        Debug.Log(postCopy.sharedheap.OnValueChanged.GetInvocationList().Length);
         Debug.Log($" orig ref {user.speed.sharedheap} copy ref {postCopy.sharedheap}" +
                   $" are same? {ReferenceEquals(postCopy.inspectHeap, user.speed.inspectHeap)}");
-        Debug.Log($"before refresh: orig {user.speed.Get} copy {postCopy.Get} refval {user.speed.sharedheap.val}");
+        Debug.Log($"before refresh: orig {user.speed.Get} copy {postCopy.Get} refval {user.speed.sharedheap.unbox}");
         
-        Debug.Log($"after refresh: orig {user.speed.Get} copy {postCopy.Get} refval {user.speed.sharedheap.val}");
+        Debug.Log($"after refresh: orig {user.speed.Get} copy {postCopy.Get} refval {user.speed.sharedheap.unbox}");
 
         Assert.AreNotEqual(null, user.speed.sharedheap, "orig reference is null");
         Assert.AreNotEqual(null, postCopy.sharedheap, "postCopy reference is null");

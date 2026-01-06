@@ -16,13 +16,15 @@ public class Ref<T> where T : struct
     public static implicit operator T(Ref<T> r) => (r != null) ? r.val : default;
 }
 
+public interface IRefBox { }
 
 [Serializable]
 [InlineProperty]
-public class RefSync<T> where T : struct
+public class RefBox<T> : IRefBox
+    where T : struct
 {
-    public T val;
-    public Action OnValueChanged;
-    
-    public RefSync(T initialValue) => val = initialValue;
+    public T unbox;
+    public RefBox(T initialValue) => unbox = initialValue;
+
+    public static implicit operator T(RefBox<T> rb) => rb.unbox;
 }
