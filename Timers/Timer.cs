@@ -2,14 +2,14 @@
 using EMILtools.Extensions;
 using EMILtools.Signals;
 using EMILtools.Core;
-using static EMILtools.Core.AutoBoxer;
+using UnityEngine;
 
 namespace EMILtools.Timers
 {
     [Serializable]
-    public abstract class Timer : IBoxUser
+    public abstract class Timer
     {
-        protected OptionalRef<float> initialTime;
+        protected Fluid<float> initialTime;
         protected float Time { get; set; }
         public bool isRunning { get; protected set; } = false;
         public float Progress => Time / initialTime.Value;
@@ -19,10 +19,13 @@ namespace EMILtools.Timers
         public PersistentAction OnTimerStop = new();
         public PersistentAction OnTimerTick = new();
 
-        public Timer(float _initialTime)
-            => initialTime.stack = _initialTime;
-        
-        public Timer(float _initialTime,
+        public Timer(Fluid<float> _initialTime)
+        {
+            Debug.Log($"given timer with time {_initialTime.Value}");
+            initialTime = _initialTime;
+        }
+
+        public Timer(Fluid<float> _initialTime,
                 Action[] OnTimerStartCbs = null,
                 Action[] OnTimerTickCbs = null,
                 Action[] OnTimerStopCbs = null)
@@ -37,13 +40,16 @@ namespace EMILtools.Timers
 
         public void Start()
         {
-            if (initialTime.Value <= 0)
+            Debug.Log(initialTime.stack);
+            Debug.Log(initialTime.isRef);
+            //Debug.Log(initialTime.heap);
+            if (initialTime.stack <= 0)
             {
                 this.Warn("Please set an initial time for this timer");
                 return;
             }
 
-            Time = initialTime.Value;
+            Time = initialTime.stack;
             if (!isRunning)
             {
                 isRunning = true;

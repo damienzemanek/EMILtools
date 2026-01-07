@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
+using Sirenix.OdinInspector;
 using UnityEngine;
-using static EMILtools.Core.Box;
 
 namespace EMILtools.Core
 {
@@ -55,19 +55,23 @@ namespace EMILtools.Core
     /// </summary>
     /// <typeparam name="T"></typeparam>
     [Serializable]
-    public struct OptionalRef<T> : IBoxable where T : struct
+    [InlineProperty]
+    public struct Fluid<T> where T : struct
     {
-        public OptionalRef(T initial)
+        [HorizontalGroup("s", width: 0.6f), ShowInInspector, HideLabel]
+        T InspectorExposedValue
         {
-            _stack = initial;
-            isRef = false;
-            sharedheap = null;
+            get => _stack;
+            set
+            {
+                if (isRef) sharedheap.unbox = _stack = value;
+                else _stack = value;
+            }
         }
-        
-        [SerializeField] T _stack;
-        [SerializeField] public bool isRef;
-        [NonSerialized] public RefBox<T> sharedheap;
-        public RefBox<T> reference => isRef ? sharedheap : 
+        [SerializeField, HideInInspector] T _stack; 
+        [SerializeField, HideInInspector] public bool isRef;
+        [SerializeField, HideInInspector] public Box<T> sharedheap;
+        public Box<T> reference => isRef ? sharedheap : 
             throw new InvalidOperationException("Variable is not boxed");
         
         /// <summary>
@@ -113,22 +117,26 @@ namespace EMILtools.Core
         
         public readonly T heapReadOnly => isRef ? sharedheap.unbox :
                 throw new InvalidOperationException("Variable is not boxed");
-        
 
         public void Box()
         {
             isRef = true;
-            if (sharedheap == null) sharedheap = new RefBox<T>(_stack);
+            if (sharedheap == null) sharedheap = new Box<T>();
+            sharedheap.unbox = _stack;
         }
-
-        public void PullHeap()
+        
+        public void RemoveBox()
         {
-            if(!isRef) throw new InvalidOperationException("Variable is not boxed");
-            _stack = sharedheap.unbox;
+            isRef = false;
+            sharedheap = null;
         }
 
-        public static implicit operator T(OptionalRef<T> c) => c.Value;
-        public static implicit operator OptionalRef<T>(T v) => new OptionalRef<T> { _stack = v };
+        public static implicit operator T(Fluid<T> c) => c.Value;
+        // Only use when NOT using reference
+        public static implicit operator Fluid<T>(T v) => new Fluid<T>() { _stack = v };
+        public static explicit operator Fluid<T>(Box<T> c) => new Fluid<T> { _stack = c, isRef = true, sharedheap = c };
+        public static explicit operator Box<T>(Fluid<T> c) => c.reference;
+        
     }
 }
 

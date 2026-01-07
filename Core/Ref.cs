@@ -16,15 +16,13 @@ public class Ref<T> where T : struct
     public static implicit operator T(Ref<T> r) => (r != null) ? r.val : default;
 }
 
-public interface IRefBox { }
-
 [Serializable]
 [InlineProperty]
-public class RefBox<T> : IRefBox
+public class Box<T> 
     where T : struct
 {
     public T unbox;
-    public RefBox(T initialValue) => unbox = initialValue;
-
-    public static implicit operator T(RefBox<T> rb) => rb.unbox;
+    public static implicit operator T(Box<T> rb) => rb.unbox;
+    public static implicit operator Fluid<T>(Box<T> rb) =>
+        new Fluid<T>() { isRef = true, sharedheap = rb, stack = rb.unbox };
 }

@@ -92,7 +92,7 @@ namespace EMILtools.Signals
                 }
             }
 
-             ReactiveIntercept<T> ri;
+            [VerticalGroup("Split")] [HorizontalGroup("Split/Left")] [SerializeField] [HideLabel] ReactiveIntercept<T> ri;
             
             /// <summary>
             /// Used for MODIFIERS to store the final math value
@@ -104,7 +104,8 @@ namespace EMILtools.Signals
             /// Value is the calculated value when there are modifiers
             /// </summary>
             [ShowInInspector, ReadOnly, HideLabel]
-            [VerticalGroup("Split/Left")]
+            [VerticalGroup("Split")]
+            [HorizontalGroup("Split/Right")]
             [PropertyOrder(0)]
             public T Value
             {
@@ -125,10 +126,7 @@ namespace EMILtools.Signals
             }
             
             // Settings
-            [VerticalGroup("Split/Right")]
-            [LabelWidth(100)]
-            [PropertyOrder(1)]
-            [SerializeField] private bool _blockIntercepts = false;
+            bool _blockIntercepts = false;
             public bool blockIntercepts
             {
                 get => _blockIntercepts;
@@ -139,10 +137,7 @@ namespace EMILtools.Signals
                     Calculate();
                 }
             }
-            [VerticalGroup("Split/Right")]
-            [LabelWidth(100)]
-            [PropertyOrder(2)]
-            public bool notifyChanges = true;
+            [HideInInspector] public bool notifyChanges = true;
             
             T Calculate()
             {

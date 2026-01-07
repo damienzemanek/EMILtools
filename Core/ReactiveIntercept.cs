@@ -1,15 +1,17 @@
 using System;
 using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 
 namespace EMILtools.Core
 {
     [Serializable]
+    [InlineProperty]
     public struct ReactiveIntercept<T>
         where T : struct
     {
-        public T baseValue;
+        [SerializeField, HideLabel] public T baseValue;
         public T Value
         { 
             get => baseValue;
@@ -20,8 +22,8 @@ namespace EMILtools.Core
                 Reactions?.Invoke(baseValue);
             }
         }
-        public PersistentFunc<T, T> Intercepts;
-        public PersistentAction<T> Reactions;
+        [HideInInspector] public PersistentFunc<T, T> Intercepts;
+        [HideInInspector] public PersistentAction<T> Reactions;
         
         public ReactiveIntercept(T initial)
         {
