@@ -7,6 +7,7 @@ using UnityEngine;
 
 [Serializable]
 [InlineProperty]
+[HideLabel]
 public class Ref<T> where T : struct
 {
     public T val;
@@ -14,15 +15,5 @@ public class Ref<T> where T : struct
     public Ref(T initialValue) => val = initialValue;
     public Ref(ref T initialValue) => val = initialValue;
     public static implicit operator T(Ref<T> r) => (r != null) ? r.val : default;
-}
-
-[Serializable]
-[InlineProperty]
-public class Box<T> 
-    where T : struct
-{
-    public T unbox;
-    public static implicit operator T(Box<T> rb) => rb.unbox;
-    public static implicit operator Fluid<T>(Box<T> rb) =>
-        new Fluid<T>() { isRef = true, sharedheap = rb, stack = rb.unbox };
+    public static implicit operator Ref<T>(T val) => new Ref<T>(val);
 }

@@ -9,23 +9,23 @@ namespace EMILtools.Timers
     [Serializable]
     public abstract class Timer
     {
-        protected Fluid<float> initialTime;
+        protected Ref<float> initialTime;
         protected float Time { get; set; }
         public bool isRunning { get; protected set; } = false;
-        public float Progress => Time / initialTime.Value;
-        public float Duration => initialTime.Value;
+        public float Progress => Time / initialTime;
+        public float Duration => initialTime;
         
         public PersistentAction OnTimerStart = new();
         public PersistentAction OnTimerStop = new();
         public PersistentAction OnTimerTick = new();
 
-        public Timer(Fluid<float> _initialTime)
+        public Timer(float _initialTime)
         {
-            Debug.Log($"given timer with time {_initialTime.Value}");
+            Debug.Log($"given timer with time {_initialTime}");
             initialTime = _initialTime;
         }
 
-        public Timer(Fluid<float> _initialTime,
+        public Timer(float _initialTime,
                 Action[] OnTimerStartCbs = null,
                 Action[] OnTimerTickCbs = null,
                 Action[] OnTimerStopCbs = null)
@@ -34,22 +34,19 @@ namespace EMILtools.Timers
             if(OnTimerTickCbs != null && OnTimerTickCbs.Length > 0) OnTimerTick.Add(OnTimerTickCbs);
             if(OnTimerStopCbs != null && OnTimerStopCbs.Length > 0) OnTimerStop.Add(OnTimerStopCbs);
 
-            initialTime.stack = _initialTime;
+            initialTime = _initialTime;
             isRunning = false;
         }
 
         public void Start()
         {
-            Debug.Log(initialTime.stack);
-            Debug.Log(initialTime.isRef);
-            //Debug.Log(initialTime.heap);
-            if (initialTime.stack <= 0)
+            if (initialTime <= 0)
             {
                 this.Warn("Please set an initial time for this timer");
                 return;
             }
 
-            Time = initialTime.stack;
+            Time = initialTime;
             if (!isRunning)
             {
                 isRunning = true;

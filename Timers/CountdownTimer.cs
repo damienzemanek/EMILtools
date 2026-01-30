@@ -7,9 +7,9 @@ namespace EMILtools.Timers
     [Serializable]
     public class CountdownTimer : Timer
     { 
-        public CountdownTimer(Fluid<float> _initialTime) : base(_initialTime) { }
+        public CountdownTimer(float _initialTime) : base(_initialTime) { }
         
-        public CountdownTimer(Fluid<float> _initialTime, bool isRef, 
+        public CountdownTimer(float _initialTime, bool isRef, 
             Action[] OnTimerStartCbs = null, Action[] OnTimerTickCbs = null, Action[] OnTimerStopCbs = null)
         : base (_initialTime, OnTimerStartCbs, OnTimerTickCbs, OnTimerStopCbs) { }
         
@@ -20,7 +20,7 @@ namespace EMILtools.Timers
         }
         
         public bool isFinished() => Time <= 0;
-        public void Reset() => Time = initialTime.Value;
+        public void Reset() => Time = initialTime;
         public void Reset(float newInitialTime) => Time = newInitialTime;
             
     }   
