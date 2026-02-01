@@ -6,59 +6,96 @@ using UnityEngine;
 
 namespace EMILtools.Core
 {
-    [Serializable]
-    [InlineProperty]
-    public struct ReactiveIntercept<T>
-        where T : struct
+    public struct ReactiveInterceptCore<T>
     {
-        [SerializeField, HideLabel] public T baseValue;
+        [SerializeField, HideLabel] internal T _value;
+        public PersistentFunc<T, T> Intercepts;
+        public PersistentAction<T> Reactions;
         public T Value
         { 
-            get => baseValue;
+            get => _value;
             set
             {
                 T processed = (Intercepts != null) ? Intercepts.ApplySequentially(value) : value;
-                if(EqualityComparer<T>.Default.Equals(baseValue, processed)) return;
-                Reactions?.Invoke(baseValue);
+                if(EqualityComparer<T>.Default.Equals(_value, processed)) return;
+                _value = processed;
+                Reactions?.Invoke(_value);
             }
         }
-        [HideInInspector] public PersistentFunc<T, T> Intercepts;
-        [HideInInspector] public PersistentAction<T> Reactions;
-        
-        public ReactiveIntercept(T initial)
+
+        public ReactiveInterceptCore(T initial)
         {
-            baseValue = initial;
+            _value = initial;
             Intercepts = null;
             Reactions = null;
         }
+    }
+
+    public interface IReactiveIntercept<T>
+    {
+        T Value { get; set; }
+    }
+    
+    [Serializable]
+    [InlineProperty]
+    public struct ReactiveInterceptVT<T> : IReactiveIntercept<T>
+        where T : struct
+    {
+        ReactiveInterceptCore<T> core;
+
+        public T Value
+        {
+            get => core.Value;
+            set => core.Value = value;
+        }
+        
+        public ReactiveInterceptVT(T initial) => core = new ReactiveInterceptCore<T>(initial);
+
+        // ----------------------------------------------------------------------------------
+        //                              No Operator Overrides
+        // ----------------------------------------------------------------------------------
+    }
+    
+    [Serializable]
+    [InlineProperty]
+    public struct ReactiveInterceptRT<T> : IReactiveIntercept<T>
+        where T : class
+    {
+        internal ReactiveInterceptCore<T> core;
+        public T Value
+        {
+            get => core.Value;
+            set => core.Value = value;
+        }
+        public ReactiveInterceptRT(T initial) => core = new ReactiveInterceptCore<T>(initial);
 
         // ----------------------------------------------------------------------------------
         //                              Operator Overrides
         //                      Func<T,T>: FUNCS += _ => Method();
         //                      Action<T>: ACTION += _ => { Method(); };
         // ----------------------------------------------------------------------------------
-        public static ReactiveIntercept<T> operator +(ReactiveIntercept<T> ri, Func<T,T> cb)
+        public static ReactiveInterceptRT<T> operator +(ReactiveInterceptRT<T> ri, Func<T,T> cb)
         {
-            if(ri.Intercepts == null) ri.Intercepts = new PersistentFunc<T, T>();
-            ri.Intercepts.Add(cb);
+            if(ri.core.Intercepts == null) ri.core.Intercepts = new PersistentFunc<T, T>();
+            ri.core.Intercepts.Add(cb);
             return ri;
         }
         
-        public static ReactiveIntercept<T> operator -(ReactiveIntercept<T> ri, Func<T, T> cb)
+        public static ReactiveInterceptRT<T> operator -(ReactiveInterceptRT<T> ri, Func<T, T> cb)
         {
-            ri.Intercepts?.Remove(cb);
+            ri.core.Intercepts?.Remove(cb);
             return ri;
         }
-        public static ReactiveIntercept<T> operator +(ReactiveIntercept<T> ri, Action<T> cb)
+        public static ReactiveInterceptRT<T> operator +(ReactiveInterceptRT<T> ri, Action<T> cb)
         {
-            if (ri.Reactions == null) ri.Reactions = new PersistentAction<T>();
-            ri.Reactions.Add(cb);
+            if (ri.core.Reactions == null) ri.core.Reactions = new PersistentAction<T>();
+            ri.core.Reactions.Add(cb);
             return ri;
         }
 
-        public static ReactiveIntercept<T> operator -(ReactiveIntercept<T> ri, Action<T> cb)
+        public static ReactiveInterceptRT<T> operator -(ReactiveInterceptRT<T> ri, Action<T> cb)
         {
-            ri.Reactions?.Remove(cb);
+            ri.core.Reactions?.Remove(cb);
             return ri;
         }
     }

@@ -92,7 +92,7 @@ namespace EMILtools.Signals
                 }
             }
 
-            [VerticalGroup("Split")] [HorizontalGroup("Split/Left")] [SerializeField] [HideLabel] ReactiveIntercept<T> ri;
+            [VerticalGroup("Split")] [HorizontalGroup("Split/Left")] [SerializeField] [HideLabel] T _value;
             
             /// <summary>
             /// Used for MODIFIERS to store the final math value
@@ -109,8 +109,12 @@ namespace EMILtools.Signals
             [PropertyOrder(0)]
             public T Value
             {
-                get => (HasModifiers && !blockIntercepts) ? calculated : ri.baseValue;
-                set => ri.Value = value;
+                get => (HasModifiers) ? calculated : _value;
+                set
+                {
+                    _value = value;
+                    Calculate();
+                }
             }
 
             // Not initialized here to save on memory, When using lazy initialize
@@ -120,30 +124,18 @@ namespace EMILtools.Signals
 
             public Stat(T initialValue)
             {
-                ri = new ReactiveIntercept<T>(initialValue);
-                ri += _ => { Calculate(); }; //putting Calculate(); in { } forces a void return type (for Action<T>)
+                _value = initialValue;
                 Calculate();
             }
             
             // Settings
-            bool _blockIntercepts = false;
-            public bool blockIntercepts
-            {
-                get => _blockIntercepts;
-                set
-                {
-                    if (_blockIntercepts == value) return;
-                    _blockIntercepts = value;
-                    Calculate();
-                }
-            }
             [HideInInspector] public bool notifyChanges = true;
             
             T Calculate()
             {
-                if (!HasModifiers) return ri.baseValue;
-                T beingModified = _modSlots.ApplyAll(ri.baseValue);
-                Debug.Log("Old calculated value: " + ri.baseValue);
+                if (!HasModifiers) return _value;
+                T beingModified = _modSlots.ApplyAll(_value);
+                Debug.Log("Old calculated value: " + _value);
                 Debug.Log("New calculated value: " + beingModified);
                 return calculated = beingModified;
             }
@@ -213,6 +205,37 @@ namespace EMILtools.Signals
             /// <param name="r"></param>
             /// <returns></returns>
             public static implicit operator T(Stat<T, TTag> r) => (r != null) ? r.Value : default;
+
+
+            /// <summary>
+            /// Writing operator overloads
+            /// </summary>
+            /// <param name="stat"></param>
+            /// <param name="amount"></param>
+            /// <returns></returns>
+            public static Stat<T, TTag> operator +(Stat<T, TTag> stat, int amount)
+            {
+                stat._value = (T)Convert.ChangeType(Convert.ToDouble(stat._value) + amount, typeof(T));
+                return stat;
+            }
+            
+            public static Stat<T, TTag> operator -(Stat<T, TTag> stat, int amount)
+            {
+                stat._value = (T)Convert.ChangeType(Convert.ToDouble(stat._value) - amount, typeof(T));
+                return stat;
+            }
+            
+            public static Stat<T, TTag> operator *(Stat<T, TTag> stat, int amount)
+            {
+                stat._value = (T)Convert.ChangeType(Convert.ToDouble(stat._value) * amount, typeof(T));
+                return stat;
+            }
+            
+            public static Stat<T, TTag> operator /(Stat<T, TTag> stat, int amount)
+            {
+                stat._value = (T)Convert.ChangeType(Convert.ToDouble(stat._value) / amount, typeof(T));
+                return stat;
+            }
             
         }
     
