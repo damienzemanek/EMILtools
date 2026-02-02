@@ -22,12 +22,7 @@ namespace EMILtools.Timers
                 GlobalTickerInitialized = true;
             }
         
-            public class GlobalTicker : MonoBehaviour
-            {
-                void Update() => TimerUtility.TickAllUpdates(Time.deltaTime);
-                void FixedUpdate() => TimerUtility.TickAllFixed(Time.fixedDeltaTime);
-            }
-            
+
             /// <summary>
             /// A local "receipt" class that tracks all timers and hooks owned by a specific object.
             /// </summary>

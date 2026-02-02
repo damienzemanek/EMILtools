@@ -2,6 +2,7 @@
 using EMILtools.Extensions;
 using EMILtools.Signals;
 using EMILtools.Core;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace EMILtools.Timers
@@ -9,17 +10,23 @@ namespace EMILtools.Timers
     [Serializable]
     public abstract class Timer
     {
-        protected Ref<float> initialTime;
-        protected float Time { get; set; }
-        public bool isRunning { get; protected set; } = false;
-        public float Progress => Time / initialTime;
+        [ShowInInspector] protected Ref<float> initialTime;
+        [ShowInInspector] [ReadOnly] public float Time { get; set; }
+        [field: ShowInInspector] [field: ReadOnly] public bool isRunning { get; protected set; } = false;
+         public float Progress => Time / initialTime;
         public float Duration => initialTime;
         
-        public PersistentAction OnTimerStart = new();
-        public PersistentAction OnTimerStop = new();
-        public PersistentAction OnTimerTick = new();
+        [HideInInspector] public PersistentAction OnTimerStart = new();
+        [HideInInspector] public PersistentAction OnTimerStop = new();
+        [HideInInspector] public PersistentAction OnTimerTick = new();
 
         public Timer(float _initialTime)
+        {
+            Debug.Log($"given timer with time {_initialTime}");
+            initialTime = _initialTime;
+        }
+        
+        public Timer(Ref<float> _initialTime)
         {
             Debug.Log($"given timer with time {_initialTime}");
             initialTime = _initialTime;
@@ -38,7 +45,7 @@ namespace EMILtools.Timers
             isRunning = false;
         }
 
-        public void Start()
+        public virtual void Start()
         {
             if (initialTime <= 0)
             {
@@ -72,10 +79,10 @@ namespace EMILtools.Timers
         public void TryTick(float deltaTime)
         {
             if (!isRunning) return;
+            if(Time > initialTime) Time = initialTime; // Clamp Time to initialTime
             // this.Log($"Ticking, Prog: {Progress}");
             TickImplementation(deltaTime);
             OnTimerTick.Invoke();
-
         }
     }
 }

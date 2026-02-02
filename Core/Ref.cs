@@ -7,10 +7,10 @@ using UnityEngine;
 
 [Serializable]
 [InlineProperty]
-[HideLabel]
+[HideReferenceObjectPicker]
 public class Ref<T> where T : struct
 {
-    public T val;
+    [HideLabel, InlineProperty] public T val;
     public virtual ref T ValueRef => ref val;
     public Ref(T initialValue) => val = initialValue;
     public Ref(ref T initialValue) => val = initialValue;

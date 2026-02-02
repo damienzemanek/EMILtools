@@ -6,11 +6,33 @@ using UnityEngine;
 
 namespace EMILtools.Core
 {
+    [Serializable]
+    [InlineProperty]
     public struct ReactiveInterceptCore<T>
     {
         [SerializeField, HideLabel] internal T _value;
-        public PersistentFunc<T, T> Intercepts;
-        public PersistentAction<T> Reactions;
+        
+        PersistentAction<T> _Reactions;
+        PersistentFunc<T, T> _Intercepts;
+
+        public PersistentFunc<T, T> Intercepts
+        {
+            get
+            {
+                if(_Intercepts == null) _Intercepts = new PersistentFunc<T, T>();
+                return _Intercepts;
+            }
+            set => _Intercepts = value;
+        }
+        public PersistentAction<T> Reactions 
+        {
+            get
+            {
+                if (_Reactions == null) _Reactions = new PersistentAction<T>();
+                return _Reactions;
+            }
+            set => _Reactions = value;
+        }
         public T Value
         { 
             get => _value;
@@ -26,8 +48,16 @@ namespace EMILtools.Core
         public ReactiveInterceptCore(T initial)
         {
             _value = initial;
-            Intercepts = null;
-            Reactions = null;
+            _Intercepts = null;
+            _Reactions = null;
+        }
+        public ReactiveInterceptCore(T initial,
+            PersistentAction<T> reaction = null,
+            PersistentFunc<T, T> intercept = null)
+        {
+            _value = initial;
+            _Intercepts = intercept;
+            _Reactions = reaction;
         }
     }
 
@@ -41,7 +71,7 @@ namespace EMILtools.Core
     public struct ReactiveInterceptVT<T> : IReactiveIntercept<T>
         where T : struct
     {
-        ReactiveInterceptCore<T> core;
+        [SerializeField, HideLabel] internal ReactiveInterceptCore<T> core;
 
         public T Value
         {
@@ -51,9 +81,21 @@ namespace EMILtools.Core
         
         public ReactiveInterceptVT(T initial) => core = new ReactiveInterceptCore<T>(initial);
 
+        public ReactiveInterceptVT(T initial,
+            PersistentAction<T> reaction = null,
+            PersistentFunc<T, T> intercept = null)
+        {
+            core = new ReactiveInterceptCore<T>(initial);
+            core.Reactions = reaction;
+            core.Intercepts = intercept;
+        }
+
         // ----------------------------------------------------------------------------------
-        //                              No Operator Overrides
+        //                              No += Operator Overrides
         // ----------------------------------------------------------------------------------
+        
+        public static implicit operator T(ReactiveInterceptVT<T> ri) => ri.Value;
+
     }
     
     [Serializable]

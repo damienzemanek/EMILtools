@@ -8,6 +8,8 @@ namespace EMILtools.Timers
     public class CountdownTimer : Timer
     { 
         public CountdownTimer(float _initialTime) : base(_initialTime) { }
+        public CountdownTimer(Ref<float> _initialTime) : base(_initialTime) { }
+
         
         public CountdownTimer(float _initialTime, bool isRef, 
             Action[] OnTimerStartCbs = null, Action[] OnTimerTickCbs = null, Action[] OnTimerStopCbs = null)
@@ -22,7 +24,6 @@ namespace EMILtools.Timers
         public bool isFinished() => Time <= 0;
         public void Reset() => Time = initialTime;
         public void Reset(float newInitialTime) => Time = newInitialTime;
-            
-    }   
+    }
 }
 
