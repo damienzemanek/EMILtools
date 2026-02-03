@@ -23,6 +23,7 @@ namespace EMILtools.Timers
         
         public bool isFinished() => Time <= 0;
         public void Reset() => Time = initialTime;
+        public void Restart() { Reset(); Start(); }
         public void Reset(float newInitialTime) => Time = newInitialTime;
     }
 }
