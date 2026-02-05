@@ -63,7 +63,7 @@ namespace EMILtools.Timers
             {
                 isRunning = true;
                 OnTimerStart?.Invoke();
-                this.Log("Started Timer");
+                //this.Log("Started Timer");
             }
         }
 
@@ -73,7 +73,7 @@ namespace EMILtools.Timers
 
             isRunning = false;
             OnTimerStop?.Invoke();
-            this.Log("Stopped Timer");
+            //this.Log("Stopped Timer");
         }
 
         public void Pause() => isRunning = false;
