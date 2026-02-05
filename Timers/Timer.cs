@@ -20,9 +20,17 @@ namespace EMILtools.Timers
         [HideInInspector] public PersistentAction OnTimerStop = new();
         [HideInInspector] public PersistentAction OnTimerTick = new();
 
-        public Timer(float _initialTime) => SetInitialTime(initialTime);
+        public Timer(float _initialTime)
+        {
+            Debug.Log($"Creating Timer with initial time {_initialTime}");
+            initialTime = _initialTime;
+        }
         
-        public Timer(Ref<float> _initialTime) => SetInitialTime(initialTime);
+        public Timer(Ref<float> _initialTime) 
+        {
+            Debug.Log($"Creating Timer with initial time {_initialTime.val}");
+            initialTime = _initialTime;
+        }
 
         public Timer(float _initialTime,
                 Action[] OnTimerStartCbs = null,
@@ -44,8 +52,8 @@ namespace EMILtools.Timers
 
         public virtual void Start()
         {
-            if (initialTime <= 0) this.Warn("Please set an initial time for this timer");
             InitializeTime();
+            if (initialTime <= 0) this.Warn("Please set an initial time for this timer");
             StartCore();
         }
 
