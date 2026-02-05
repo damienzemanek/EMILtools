@@ -13,24 +13,16 @@ namespace EMILtools.Timers
         [ShowInInspector] protected Ref<float> initialTime;
         [ShowInInspector] [ReadOnly] public float Time { get; set; }
         [field: ShowInInspector] [field: ReadOnly] public bool isRunning { get; protected set; } = false;
-         public float Progress => Time / initialTime;
+        public float Progress => Mathf.Clamp01(Time / initialTime);
         public float Duration => initialTime;
         
         [HideInInspector] public PersistentAction OnTimerStart = new();
         [HideInInspector] public PersistentAction OnTimerStop = new();
         [HideInInspector] public PersistentAction OnTimerTick = new();
 
-        public Timer(float _initialTime)
-        {
-            Debug.Log($"given timer with time {_initialTime}");
-            initialTime = _initialTime;
-        }
+        public Timer(float _initialTime) => SetInitialTime(initialTime);
         
-        public Timer(Ref<float> _initialTime)
-        {
-            Debug.Log($"given timer with time {_initialTime}");
-            initialTime = _initialTime;
-        }
+        public Timer(Ref<float> _initialTime) => SetInitialTime(initialTime);
 
         public Timer(float _initialTime,
                 Action[] OnTimerStartCbs = null,
@@ -44,16 +36,21 @@ namespace EMILtools.Timers
             initialTime = _initialTime;
             isRunning = false;
         }
+        
+        public void SetInitialTime(float _initialTime) => initialTime = _initialTime;
+        public void SetInitialTime(Ref<float> _initialTime) => initialTime = _initialTime;
+
+        public virtual void InitializeTime() => Time = initialTime;
 
         public virtual void Start()
         {
-            if (initialTime <= 0)
-            {
-                this.Warn("Please set an initial time for this timer");
-                return;
-            }
+            if (initialTime <= 0) this.Warn("Please set an initial time for this timer");
+            InitializeTime();
+            StartCore();
+        }
 
-            Time = initialTime;
+        protected void StartCore()
+        {          
             if (!isRunning)
             {
                 isRunning = true;
