@@ -57,6 +57,8 @@ namespace EMILtools.Signals
         public Action OnAdd { get; set; } = delegate { };
         public Action OnRemove { get; set; } = delegate { };
 
+        public StatModDecorator() { }
+        
         public StatModDecorator(ulong hash)
         {
             removable = false;
@@ -77,6 +79,8 @@ namespace EMILtools.Signals
         where TTag : struct, IStatTag
     {
         public bool enabled;
+        
+        public StatModDecToggleable() { }
         public StatModDecToggleable(ulong hash, bool startEnabled = true) : base(hash)
             => this.enabled = startEnabled;
 
@@ -108,6 +112,9 @@ namespace EMILtools.Signals
     {
         public bool enabled;
         public bool Value { get => enabled; set => enabled = value; }
+
+        public Bool() { enabled = false; }
+        public Bool(bool initial) => enabled = initial;
     }
 
     [Serializable]
@@ -117,6 +124,11 @@ namespace EMILtools.Signals
         public bool Value { get => enabled.Value; set => enabled.Value = value; }
         public static implicit operator ReactiveInterceptCore<bool>(RI gate) =>
             gate.enabled.core;
+        
+        public ReactiveInterceptCore<bool> Core => enabled.core;
+        
+        public RI() { enabled = new ReactiveInterceptVT<bool>(false); }
+        public RI(bool initial) => enabled = new ReactiveInterceptVT<bool>(initial);
     }
     
     [Serializable]
@@ -124,12 +136,16 @@ namespace EMILtools.Signals
         where T: struct
         where TMod : struct, IStatModStrategy<T>
         where TTag : struct, IStatTag
-        where TGate : class, IGate
+        where TGate : class, IGate, new()
     {
         public TGate enabled;
 
+        public StatModDecToggleable() { }
         public StatModDecToggleable(ulong hash, bool startEnabled) : base(hash)
-            => enabled.Value = startEnabled;
+        {
+            enabled = new TGate();
+            enabled.Value = startEnabled;
+        }
 
         public override DecApplyAttemptInfo<T> TryApplyThruDecoratorFirst(T input)
         {
@@ -146,6 +162,8 @@ namespace EMILtools.Signals
             }
             return DecInfo;
         }
+        
+        public static implicit operator bool(StatModDecToggleable<T, TMod, TTag, TGate> dec) => dec.enabled.Value;
     }
     
     
@@ -154,7 +172,7 @@ namespace EMILtools.Signals
         where T : struct
         where TMod : struct, IStatModStrategy<T>
         where TTag : struct, IStatTag
-        where TGate : class, IGate
+        where TGate : class, IGate, new()
     {
         public CountdownTimer timer;
 
@@ -163,6 +181,8 @@ namespace EMILtools.Signals
             var DecInfo = base.TryApplyThruDecoratorFirst(input);
             return DecInfo;
         }
+        
+        public StatModDecTimed() { }
         
         public StatModDecTimed(ulong hash, CountdownTimer timer, bool startEnabled = true, 
             Action[] OnDecorAddCBs = null, Action[] OnDecorRemoveCBs = null) 

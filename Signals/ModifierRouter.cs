@@ -48,26 +48,39 @@ namespace EMILtools.Signals
                     statsFields.Add((field, instance));
                     continue; 
                 }
-
-                // Wrappers
-                if (field.FieldType.IsGenericType)
+                
+                // Wrapper detection
+                Debug.Log($"[CacheStatFields] Checking for wrapper of type {fieldType.Name}");
+                Debug.Log($"The properties are {string.Join(", ", fieldType.GetProperties().Select(p => p.Name))}");
+                var property = instance.GetType().GetProperty("Value");
+                if (property != null)
                 {
-                    var args = field.FieldType.GetGenericArguments();
-                    if (args.Length <= 1) continue;
-                    if (!typeof(IStat).IsAssignableFrom(args[0])) continue;
-                    var property = instance.GetType().GetProperty("Value");
-                    var value = property.GetValue(instance);
-                    statsFields.Add((field, value));
-                    continue;
+                    Debug.Log($"[CacheStatFields] ! Found wrapper property {property.Name} on {fieldType.Name}");
+                    Debug.Log($" Property type is {property.PropertyType.Name}");
+                    if (property.PropertyType.IsGenericType && property.PropertyType.GetGenericTypeDefinition() == typeof(Stat<,>))
+                    {
+                        Debug.Log($"Adding");
+                        var statInstance = property.GetValue(instance);
+                        statsFields.Add((field, statInstance));
+                        continue;
+                    }
                 }
 
                 if (typeof(IStatHolder).IsAssignableFrom(field.FieldType))
                 {
-                    CacheStatsRecursive(field.GetValue(user) as IStatHolder, out var newNestedStats, nested: true);
-                    statsFields.AddRange(newNestedStats);
+                    var child = field.GetValue(user) as IStatHolder;
+                    if (child != null)
+                    {
+                        CacheStatsRecursive(child, out var childStats, nested: true);
+                        statsFields.AddRange(childStats); // This is the local stats field on the child  
+                    }
                 }
             }
-            if (nested) return; // Block the nested dudes from caching
+            if (nested) 
+            {
+                nestedStats.AddRange(statsFields); // give the caller the list
+                return;
+            }
             if (statsFields.Count <= 0) { Debug.Log("No IStat fields found to cache, Please declare your Stat fields in your IStatUser concrete implementation.");return;}
             if (user is not IStatUser mainUser) { Debug.LogError("Main user is not a IStatUSer, cannot cache"); return; }
             mainUser.Stats = new Dictionary<Type, IStat>(statsFields.Count);

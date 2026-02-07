@@ -47,7 +47,7 @@ namespace EMILtools.Signals
             Action[] OnAddDecorCBs = null,
             Action[] OnRemoveDecorCBs = null)
                 where TTag: struct, IStatTag
-                where TGate : class, IGate
+                where TGate : class, IGate, new()
             => data.WithTimer<float, MathMod, TTag, TGate>(timer, startEnabled, OnAddDecorCBs, OnRemoveDecorCBs);
         
         // //----------------------------------  FLOAT - GENERIC TMod  -----------------------------------------
@@ -56,7 +56,7 @@ namespace EMILtools.Signals
             Action[] OnRemoveDecorCBs = null)
                 where TMod : struct, IStatModStrategy<float>
                 where TTag: struct, IStatTag
-                where TGate : class, IGate
+                where TGate : class, IGate, new()
                 => data.WithTimer<float, TMod, TTag, TGate>(timer, startEnabled, OnAddDecorCBs, OnRemoveDecorCBs);
         
         // //----------------------------------  GENERIC T - GENERIC TMod  -----------------------------------------
@@ -66,7 +66,7 @@ namespace EMILtools.Signals
                 where T : struct
                 where TMod : struct, IStatModStrategy<T>
                 where TTag : struct, IStatTag
-                where TGate : class, IGate
+                where TGate : class, IGate, new()
         {
             // Not setting the ref to the modifier strategy here
             // that happens after sending the modifier to the IStatUser
@@ -94,7 +94,7 @@ namespace EMILtools.Signals
             Action[] OnAddCbs = null,
             Action[] OnRemoveCbs = null)
                 where TTag : struct, IStatTag
-                where TGate : class, IGate
+                where TGate : class, IGate, new()
             => data.WithTimer<float, MathMod, TTag, TGate>(duration, startEnabled, out timer, out decor, OnAddCbs, OnRemoveCbs);
 
         // //----------------------------------  FLOAT - GENERIC TMod  -----------------------------------------
@@ -105,7 +105,7 @@ namespace EMILtools.Signals
             Action[] OnRemoveCbs = null)
                 where TMod : struct, IStatModStrategy<float>
                 where TTag : struct, IStatTag
-                where TGate : class, IGate
+                where TGate : class, IGate, new()
         => data.WithTimer<float, TMod, TTag, TGate>(duration, startEnabled, out timer, out decor, OnAddCbs, OnRemoveCbs);
 
         // //----------------------------------  GENERIC T - GENERIC TMod  -----------------------------------------
@@ -117,7 +117,7 @@ namespace EMILtools.Signals
                 where T : struct
                 where TMod : struct, IStatModStrategy<T>
                 where TTag : struct, IStatTag
-                where TGate : class, IGate
+                where TGate : class, IGate, new()
         {
             // Not setting the ref to the modifier strategy here
             // that happens after sending the modifier to the IStatUser
@@ -144,7 +144,7 @@ namespace EMILtools.Signals
             Action[] OnAddCbs = null,
             Action[] OnRemoveCbs = null)
                 where TTag : struct, IStatTag
-                where TGate : class, IGate
+                where TGate : class, IGate, new()
             => data.WithTimer<float, MathMod, TTag, TGate>(duration, OnAddCbs, OnRemoveCbs);
 
         // //----------------------------------  FLOAT - GENERIC TMod  -----------------------------------------
@@ -153,7 +153,7 @@ namespace EMILtools.Signals
             Action[] OnRemoveCbs = null)
                 where TMod : struct, IStatModStrategy<float>
                 where TTag : struct, IStatTag
-                where TGate : class, IGate
+                where TGate : class, IGate, new()
             => data.WithTimer<float, TMod, TTag, TGate>(duration, OnAddCbs, OnRemoveCbs);
 
         // //----------------------------------  GENERIC T - GENERIC TMod  -----------------------------------------
@@ -164,7 +164,7 @@ namespace EMILtools.Signals
                 where T : struct
                 where TMod : struct, IStatModStrategy<T>
                 where TTag : struct, IStatTag
-                where TGate : class, IGate
+                where TGate : class, IGate, new()
         {
             // Not setting the ref to the modifier strategy here
             // that happens after sending the modifier to the IStatUser
@@ -176,6 +176,30 @@ namespace EMILtools.Signals
 
             return data;
         }
+        
+        
+        //--------------------------------------------------------------------------------------
+        //                          Decorator Timer Togglables
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        
+        
+        public static (TMod, TTag, IStatUser) WithToggleable<T, TMod, TTag, TGate>(this (TMod mod, TTag tag, IStatUser user) data,
+            out StatModDecToggleable<T, TMod, TTag, TGate> toggleHandle)
+                where T : struct
+                where TMod : struct, IStatModStrategy<T>
+                where TTag : struct, IStatTag
+                where TGate : class, IGate, new()
+        {
+            // Not setting the ref to the modifier strategy here
+            // that happens after sending the modifier to the IStatUser
+            IStatModDecorator<T, TTag> decor = toggleHandle 
+                = new StatModDecToggleable<T, TMod, TTag, TGate>(data.mod.hash, false);
+            
+            data.user.AddDecorator<T, TMod, TTag>(decor);
+
+            return data;
+        }
+        
 
     }
 }

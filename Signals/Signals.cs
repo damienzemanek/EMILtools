@@ -26,6 +26,7 @@ namespace EMILtools.Signals
             where T : struct
             where TTag : struct, IStatTag
         {
+            [Serializable, HideLabel]
             public struct ModifierSlot
             {
                 public ModifierSlot(ulong hash)
@@ -34,12 +35,12 @@ namespace EMILtools.Signals
                     listsOfModifiers = new();
                 }
                 
-                public ulong hash; // For quick removal ops. moved from inside the mod to here so i dont have to iterate look for it
+                [HideInInspector]  public ulong hash; // For quick removal ops. moved from inside the mod to here so i dont have to iterate look for it
                 
                 // Type is TMod type (ex: tyepof MathMod, typeof ContextMod), Cannot be genericly constrainted
                 // object is List<TMod> (ex: List<struct MathMod>)
                 // decors corrosponds to the tmodlist it decorates
-                public List<(Type tmodtype, object tmodlist, List<IStatModDecorator<T, TTag>> decors)> listsOfModifiers;
+                [ShowInInspector] public List<(Type tmodtype, object tmodlist, List<IStatModDecorator<T, TTag>> decors)> listsOfModifiers;
                 
                 /// <summary>
                 /// Apply the decorator if it's there first
@@ -118,7 +119,7 @@ namespace EMILtools.Signals
             }
 
             // Not initialized here to save on memory, When using lazy initialize
-            List<ModifierSlot> _modSlots;
+            [ShowInInspector, HideLabel] List<ModifierSlot> _modSlots;
             public IReadOnlyList<ModifierSlot> ModSlots => _modSlots;
             bool HasModifiers => _modSlots != null && _modSlots.Count > 0;
 
