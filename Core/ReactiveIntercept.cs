@@ -103,13 +103,17 @@ namespace EMILtools.Core
     public struct ReactiveInterceptRT<T> : IReactiveIntercept<T>
         where T : class
     {
-        internal ReactiveInterceptCore<T> core;
-        public T Value
+        [SerializeField, HideLabel] internal ReactiveInterceptCore<T> core;
+         public T Value
         {
             get => core.Value;
             set => core.Value = value;
         }
         public ReactiveInterceptRT(T initial) => core = new ReactiveInterceptCore<T>(initial);
+
+        
+        public static implicit operator T(ReactiveInterceptRT<T> ri) => ri.Value;
+        public static implicit operator ReactiveInterceptRT<T>(T val) => new ReactiveInterceptRT<T>(val);
 
         // ----------------------------------------------------------------------------------
         //                              Operator Overrides

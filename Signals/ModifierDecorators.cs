@@ -104,18 +104,18 @@ namespace EMILtools.Signals
     }
 
     [Serializable]
-    public class GateSimple : IGate
+    public class Bool : IGate
     {
         public bool enabled;
         public bool Value { get => enabled; set => enabled = value; }
     }
 
     [Serializable]
-    public class GateReactive : IGate
+    public class RI : IGate
     {
         public ReactiveInterceptVT<bool> enabled;
         public bool Value { get => enabled.Value; set => enabled.Value = value; }
-        public static implicit operator ReactiveInterceptCore<bool>(GateReactive gate) =>
+        public static implicit operator ReactiveInterceptCore<bool>(RI gate) =>
             gate.enabled.core;
     }
     

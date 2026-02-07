@@ -198,13 +198,14 @@ namespace EMILtools.Signals
                 Debug.Log($"[Removing Decorator] Decorator Removal Success on hash {hash}");
                 Calculate();
             }
-            
+
             /// <summary>
             /// Implicit conversion so we can treat this object like its raw value T in math or logic
             /// </summary>
             /// <param name="r"></param>
             /// <returns></returns>
-            public static implicit operator T(Stat<T, TTag> r) => (r != null) ? r.Value : default;
+            public static implicit operator T(Stat<T, TTag> r) => r.Value;
+            public static implicit operator Stat<T, TTag>(T val) => new Stat<T, TTag>(val);
 
 
             /// <summary>

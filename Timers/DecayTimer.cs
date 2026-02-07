@@ -10,13 +10,14 @@ namespace EMILtools.Timers
     {
         [ShowInInspector] Ref<float> decayMult;
 
-        public DecayTimer(float _initialTime, float _decayMult) : base(_initialTime)
+        public DecayTimer(float initialValue, float _decayMult) : base(initialValue)
          => decayMult = _decayMult;
-        public DecayTimer(float _initialTime, Ref<float> _decayMult) : base(_initialTime)
+        public DecayTimer(float initialValue, Ref<float> _decayMult) : base(initialValue)
             => decayMult = _decayMult;
-        public DecayTimer(Ref<float> _initialTime, Ref<float> _decayMult) : base(_initialTime)
+        public DecayTimer(Ref<float> initialValue, Ref<float> _decayMult) : base(initialValue)
             => decayMult = _decayMult;
-        public DecayTimer(float _initialTime, Action[] OnTimerStartCbs = null, Action[] OnTimerTickCbs = null, Action[] OnTimerStopCbs = null) : base(_initialTime, OnTimerStartCbs, OnTimerTickCbs, OnTimerStopCbs) { }
+        public DecayTimer(float initialValue, Action[] OnTimerStartCbs = null, Action[] OnTimerTickCbs = null, Action[] OnTimerStopCbs = null) 
+            : base(initialValue, OnTimerStartCbs, OnTimerTickCbs, OnTimerStopCbs) { }
 
         public override void TickImplementation(float deltaTime)
         {
