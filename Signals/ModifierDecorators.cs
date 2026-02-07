@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using EMILtools.Core;
 using EMILtools.Timers;
 using UnityEngine;
 using static EMILtools.Signals.ModifierStrategies;
@@ -9,6 +10,26 @@ using static EMILtools.Timers.TimerUtility;
 
 namespace EMILtools.Signals
 {
+    
+    /// <summary>
+    /// Previous Problem: Decs couldn't block the application of the mod, only react to it after the fact.
+    ///     This meant that if you wanted to have a mod that was only applied under certain conditions,
+    ///     you had to put those conditions in the mod itself, which could lead to messy code and made
+    ///     it harder to reuse mods. 
+    /// 
+    /// Solution: Decs can now be blocked via the TryApplyThruDecoratorFirst method, which returns a
+    ///     struct containing the output value and a bool indicating whether the mod application should
+    ///     be blocked. This allows for more flexible and powerful modifiers, as they can now have
+    ///     conditions that prevent them from being applied in certain situations.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public struct DecApplyAttemptInfo<T>
+        where T : struct
+    {
+        public T output;
+        public bool blocked;
+    }
+    
     public interface IStatModDecorator<T, TTag>
         where T : struct
         where TTag : struct, IStatTag
@@ -17,11 +38,12 @@ namespace EMILtools.Signals
         public ulong hash { get; set; } // Used to isolate the correct ModSlot
         public Type tmodType { get; } // Used to isolate the correct List<TMod> in the ModSlot, from the TMod type next to it in the tuple (tmodtype, object)
         public Stat<T, TTag> stat { get; set; }
-        public T ApplyThruDecoratorFirst(T input);
+        public DecApplyAttemptInfo<T> TryApplyThruDecoratorFirst(T input);
         public Action OnAdd { get; set; }
         public Action OnRemove{ get; set; }
     }
     
+    [Serializable]
     public abstract class StatModDecorator<T, TMod, TTag> : IStatModDecorator<T, TTag>
         where T : struct
         where TMod : struct,  IStatModStrategy<T>
@@ -31,7 +53,7 @@ namespace EMILtools.Signals
         public ulong hash { get; set; }
         public Type tmodType => typeof(TMod);
         public Stat<T, TTag> stat { get; set; }
-        public abstract T ApplyThruDecoratorFirst(T input);
+        public abstract DecApplyAttemptInfo<T> TryApplyThruDecoratorFirst(T input);
         public Action OnAdd { get; set; } = delegate { };
         public Action OnRemove { get; set; } = delegate { };
 
@@ -46,18 +68,105 @@ namespace EMILtools.Signals
             removable = true;
             stat.RemoveModifier(hash);
         }
-
     }
-    
-    public class StatModDecTimed<T, TMod, TTag> : StatModDecorator<T, TMod, TTag>, ITimerUser
-        where T : struct
+
+    [Serializable]
+    public class StatModDecToggleable<T, TMod, TTag> : StatModDecorator<T, TMod, TTag>
+        where T: struct
         where TMod : struct, IStatModStrategy<T>
         where TTag : struct, IStatTag
     {
+        public bool enabled;
+        public StatModDecToggleable(ulong hash, bool startEnabled = true) : base(hash)
+            => this.enabled = startEnabled;
+
+        public override DecApplyAttemptInfo<T> TryApplyThruDecoratorFirst(T input)
+        {
+            var DecInfo = new DecApplyAttemptInfo<T>();
+            if (enabled)
+            {
+                DecInfo.output = input;
+                DecInfo.blocked = false;
+            }
+            else
+            {
+                DecInfo.output = input;
+                DecInfo.blocked = true;
+            }
+            return DecInfo;
+        }
+    }
+
+    
+    public interface IGate
+    {
+        bool Value { get; set; }
+    }
+
+    [Serializable]
+    public class GateSimple : IGate
+    {
+        public bool enabled;
+        public bool Value { get => enabled; set => enabled = value; }
+    }
+
+    [Serializable]
+    public class GateReactive : IGate
+    {
+        public ReactiveInterceptVT<bool> enabled;
+        public bool Value { get => enabled.Value; set => enabled.Value = value; }
+        public static implicit operator ReactiveInterceptCore<bool>(GateReactive gate) =>
+            gate.enabled.core;
+    }
+    
+    [Serializable]
+    public class StatModDecToggleable<T, TMod, TTag, TGate> : StatModDecorator<T, TMod, TTag>
+        where T: struct
+        where TMod : struct, IStatModStrategy<T>
+        where TTag : struct, IStatTag
+        where TGate : class, IGate
+    {
+        public TGate enabled;
+
+        public StatModDecToggleable(ulong hash, bool startEnabled) : base(hash)
+            => enabled.Value = startEnabled;
+
+        public override DecApplyAttemptInfo<T> TryApplyThruDecoratorFirst(T input)
+        {
+            var DecInfo = new DecApplyAttemptInfo<T>();
+            if (enabled.Value)
+            {
+                DecInfo.output = input;
+                DecInfo.blocked = false;
+            }
+            else
+            {
+                DecInfo.output = input;
+                DecInfo.blocked = true;
+            }
+            return DecInfo;
+        }
+    }
+    
+    
+    [Serializable]
+    public class StatModDecTimed<T, TMod, TTag, TGate> : StatModDecToggleable<T, TMod, TTag, TGate>, ITimerUser
+        where T : struct
+        where TMod : struct, IStatModStrategy<T>
+        where TTag : struct, IStatTag
+        where TGate : class, IGate
+    {
         public CountdownTimer timer;
-        public override T ApplyThruDecoratorFirst(T input) => input;
+
+        public override DecApplyAttemptInfo<T> TryApplyThruDecoratorFirst(T input)
+        {
+            var DecInfo = base.TryApplyThruDecoratorFirst(input);
+            return DecInfo;
+        }
         
-        public StatModDecTimed(ulong hash, CountdownTimer timer, Action[] OnDecorAddCBs = null, Action[] OnDecorRemoveCBs = null) : base(hash)
+        public StatModDecTimed(ulong hash, CountdownTimer timer, bool startEnabled = true, 
+            Action[] OnDecorAddCBs = null, Action[] OnDecorRemoveCBs = null) 
+                : base(hash, startEnabled)
         {
             removable = false;
             this.timer = timer;
