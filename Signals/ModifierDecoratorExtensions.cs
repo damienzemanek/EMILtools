@@ -192,8 +192,8 @@ namespace EMILtools.Signals
         {
             // Not setting the ref to the modifier strategy here
             // that happens after sending the modifier to the IStatUser
-            IStatModDecorator<T, TTag> decor = toggleHandle 
-                = new StatModDecToggleable<T, TMod, TTag, TGate>(data.mod.hash, false);
+            IStatModDecorator<T, TTag> decor = 
+                toggleHandle = new StatModDecToggleable<T, TMod, TTag, TGate>(data.mod.hash, false);
             
             data.user.AddDecorator<T, TMod, TTag>(decor);
 

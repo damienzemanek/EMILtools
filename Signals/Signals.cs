@@ -93,6 +93,8 @@ namespace EMILtools.Signals
                 }
             }
 
+            public bool dirty = false;
+
             [VerticalGroup("Split")] [HorizontalGroup("Split/Left")] [SerializeField] [HideLabel] T _value;
             
             /// <summary>
@@ -110,7 +112,11 @@ namespace EMILtools.Signals
             [PropertyOrder(0)]
             public T Value
             {
-                get => (HasModifiers) ? calculated : _value;
+                get
+                {
+                    if (dirty) Calculate();
+                    return (HasModifiers) ? calculated : _value;
+                }
                 set
                 {
                     _value = value;
@@ -129,15 +135,13 @@ namespace EMILtools.Signals
                 Calculate();
             }
             
-            // Settings
-            [HideInInspector] public bool notifyChanges = true;
-            
             T Calculate()
             {
                 if (!HasModifiers) return _value;
                 T beingModified = _modSlots.ApplyAll(_value);
                 Debug.Log("Old calculated value: " + _value);
                 Debug.Log("New calculated value: " + beingModified);
+                dirty = false;
                 return calculated = beingModified;
             }
             

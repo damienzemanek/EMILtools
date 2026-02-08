@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq.Expressions;
 using EMILtools.Core;
 using EMILtools.Timers;
+using Sirenix.OdinInspector;
 using UnityEngine;
 using static EMILtools.Signals.ModifierStrategies;
 using static EMILtools.Signals.StatTags;
@@ -72,35 +73,6 @@ namespace EMILtools.Signals
         }
     }
 
-    [Serializable]
-    public class StatModDecToggleable<T, TMod, TTag> : StatModDecorator<T, TMod, TTag>
-        where T: struct
-        where TMod : struct, IStatModStrategy<T>
-        where TTag : struct, IStatTag
-    {
-        public bool enabled;
-        
-        public StatModDecToggleable() { }
-        public StatModDecToggleable(ulong hash, bool startEnabled = true) : base(hash)
-            => this.enabled = startEnabled;
-
-        public override DecApplyAttemptInfo<T> TryApplyThruDecoratorFirst(T input)
-        {
-            var DecInfo = new DecApplyAttemptInfo<T>();
-            if (enabled)
-            {
-                DecInfo.output = input;
-                DecInfo.blocked = false;
-            }
-            else
-            {
-                DecInfo.output = input;
-                DecInfo.blocked = true;
-            }
-            return DecInfo;
-        }
-    }
-
     
     public interface IGate
     {
@@ -138,19 +110,29 @@ namespace EMILtools.Signals
         where TTag : struct, IStatTag
         where TGate : class, IGate, new()
     {
-        public TGate enabled;
+        TGate gate = new TGate();
+
+        [ShowInInspector, ReadOnly]
+        public bool Enabled
+        {
+            get => gate.Value;
+            set
+            {
+                if (gate.Value == value) return;
+                gate.Value = value;
+                if(stat != null) stat.dirty = true;
+            }
+        }
 
         public StatModDecToggleable() { }
         public StatModDecToggleable(ulong hash, bool startEnabled) : base(hash)
-        {
-            enabled = new TGate();
-            enabled.Value = startEnabled;
-        }
+         => gate.Value = startEnabled;
 
         public override DecApplyAttemptInfo<T> TryApplyThruDecoratorFirst(T input)
         {
+            //Debug.Log($"[StatModDecToggleable] TryApplyThruDecoratorFirst called with input: {input}, enabled: {gate.Value}");
             var DecInfo = new DecApplyAttemptInfo<T>();
-            if (enabled.Value)
+            if (Enabled)
             {
                 DecInfo.output = input;
                 DecInfo.blocked = false;
@@ -163,7 +145,7 @@ namespace EMILtools.Signals
             return DecInfo;
         }
         
-        public static implicit operator bool(StatModDecToggleable<T, TMod, TTag, TGate> dec) => dec.enabled.Value;
+        public static implicit operator bool(StatModDecToggleable<T, TMod, TTag, TGate> dec) => dec.gate.Value;
     }
     
     
