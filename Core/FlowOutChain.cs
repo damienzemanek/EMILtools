@@ -120,6 +120,11 @@ public abstract class FlowOutChain
         public FlowMutable() => links = new List<Link>();
         public FlowMutable(params Link[] links) => this.links = new List<Link>(links);
 
+        public FlowMutable Add(Func<bool> check, Action method)
+        {
+            links.Add(new Link(check, method));
+            return this;
+        }
         public FlowMutable Add(string checkName, Func<bool> check, string methodName, Action method)
         {
             links.Add(new Link(checkName, check, methodName, method));

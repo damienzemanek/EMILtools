@@ -1,4 +1,7 @@
 using System;
+using System.Linq;
+using EMILtools.Timers;
+using UnityEngine;
 
 namespace EMILtools.Core
 {
@@ -18,6 +21,23 @@ namespace EMILtools.Core
     ///   of Hooks and call Unsubscribe on a stable target, even if other objects have subscribed/unsubscribed in the meantime.
     /// - Fluent API Support: Enables the <c>.Sub().Sub()</c> chaining pattern by providing a consistent object to return and operate upon.
     /// </remarks>
+    
+    
+    [Serializable]
+    public sealed class PersistentAction<T, T2>
+    {
+        Action<T, T2> _action = delegate { };
+        
+        public void Invoke(T val1, T2 val2) => _action?.Invoke(val1, val2);
+        public PersistentAction<T, T2> Add(Action<T, T2> cb) { _action += cb; return this; }
+        public PersistentAction<T, T2> Remove(Action<T, T2> cb) { _action -= cb; return this; }
+        
+        public int Count => _action.GetInvocationList().Length;
+        
+        public void PrintInvokeListNames() => Debug.Log("Invoking PersistentAction with " + Count + " subscribers: " + string.Join(", NAME >>>>>>>>>>>>>> ", _action.GetInvocationList().Select(d => d.Method.Name)));
+
+    }
+    
     [Serializable]
     public sealed class PersistentAction<T>
     {
@@ -26,6 +46,9 @@ namespace EMILtools.Core
         public void Invoke(T value) => _action?.Invoke(value);
         public PersistentAction<T> Add(Action<T> cb) { _action += cb; return this; }
         public PersistentAction<T> Remove(Action<T> cb) { _action -= cb; return this; }
+        
+        public int Count => _action.GetInvocationList().Length;
+
     }
 
     /// <summary>

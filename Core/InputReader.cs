@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using static PlayerInputActions;
 
 [CreateAssetMenu(fileName = "InputReader", menuName = "ScriptableObjects/InputReader")]
-public class InputReader : ScriptableObject, IPlayerActions, IInputMouseLook
+public class InputReader : ScriptableObject, IPlayerActions, IInputMouseLook, IInputReader
 {
     public event UnityAction EnableMouseControlCamera = delegate { };
     public event UnityAction DisableMouseControlCamera = delegate { };
