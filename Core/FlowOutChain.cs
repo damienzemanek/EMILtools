@@ -29,16 +29,16 @@ public abstract class FlowOutChain
         return false;
     }
 
-    public static Link BranchIf(string ifName, Func<bool> when, string thenName, Action then)
+    public static Link Branch(string ifName, Func<bool> when, string thenName, Action then)
         => new Link(ifName, when, thenName, then);
     
-    public static Link BranchIf(Func<bool> when, Action then)
+    public static Link Branch(Func<bool> when, Action then)
         => new Link(when, then);
 
-    public static Link ReturnIf(string ifName, Func<bool> when)
+    public static Link Return(string ifName, Func<bool> when)
         => new Link(ifName, when, "return", null);
     
-    public static Link ReturnIf(Func<bool> when)
+    public static Link Return(Func<bool> when)
         => new Link(when, null);
 
     [Serializable]
@@ -95,7 +95,6 @@ public abstract class FlowOutChain
         public FlowImmutable() => links = new Link[] { };
 
         public FlowImmutable(params Link[] links) => this.links = links;
-        
 
         public override bool TryEarlyExit() => base.TryEarlyExit(links);
 
@@ -119,7 +118,12 @@ public abstract class FlowOutChain
 
         public FlowMutable() => links = new List<Link>();
         public FlowMutable(params Link[] links) => this.links = new List<Link>(links);
-
+        
+        public FlowMutable Add(Link link)
+        {
+            links.Add(link);
+            return this;
+        }
         public FlowMutable Add(Func<bool> check, Action method)
         {
             links.Add(new Link(check, method));
