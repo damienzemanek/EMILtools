@@ -114,11 +114,14 @@ namespace EMILtools.Timers
             {
                 // Using a for loop is safer if a timer is removed during its own tick
                 for (int i = updateBuffer.Count - 1; i >= 0; i--)
+                {
                     updateBuffer[i].TryTick(dt);
+                }
             }
 
             public static void TickAllFixed(float dt)
             {
+
                 // Using a for loop is safer if a timer is removed during its own tick
                 for (int i = fixedBuffer.Count - 1; i >= 0; i--)
                     fixedBuffer[i].TryTick(dt);
