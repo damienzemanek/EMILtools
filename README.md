@@ -1,12 +1,12 @@
-### EMILtools: Signals & Timers System
+### EMILtools: 
 
-A high-performance, type-safe architecture for Unity, designed to handle global timing and dynamic stat modification with zero-allocation math and fluent API design.
+Architectural system additions for Unity 6.
 
 ### Installation
 
 Copy the `EMILtools-Private` folder into your Unity project's `Assets` directory.
 
-### Signals & Modifiers System
+### "Signals" Modifier System
 
 A framework for modifying entity stats (Health, Speed, etc.).
 - Uses reflection discovery and caching only in Awake() when an IStatUser is initialized.
