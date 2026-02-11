@@ -92,15 +92,11 @@ namespace EMILtools.Signals
     [Serializable]
     public class RI : IGate
     {
-        public ReactiveInterceptVT<bool> enabled;
+        public ReactiveIntercept<bool> enabled;
         public bool Value { get => enabled.Value; set => enabled.Value = value; }
-        public static implicit operator ReactiveInterceptCore<bool>(RI gate) =>
-            gate.enabled.core;
         
-        public ReactiveInterceptCore<bool> Core => enabled.core;
-        
-        public RI() { enabled = new ReactiveInterceptVT<bool>(false); }
-        public RI(bool initial) => enabled = new ReactiveInterceptVT<bool>(initial);
+        public RI() { enabled = new ReactiveIntercept<bool>(false); }
+        public RI(bool initial) => enabled = new ReactiveIntercept<bool>(initial);
     }
     
     [Serializable]

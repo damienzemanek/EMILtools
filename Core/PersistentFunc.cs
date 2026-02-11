@@ -42,6 +42,8 @@ namespace EMILtools.Core
                 processed = _funcs[i](processed);
             return processed;
         }
+        
+        public int Count => _funcs.Count;
     
         public PersistentFunc<T, TResult> Add(Func<T, T> cb) { _funcs.Add(cb); return this; }
         public PersistentFunc<T, TResult> Remove(Func<T, T> cb)  { _funcs.Remove(cb); return this; }

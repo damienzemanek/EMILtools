@@ -1,33 +1,35 @@
 using System;
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
+using Unity.Collections;
 using UnityEngine;
 
 namespace EMILtools.Core
 {
-    [Serializable]
     public class GuardsMutable
     {
-        [ShowInInspector, ReadOnly, ListDrawerSettings(Expanded = true)]
-        public List<GuardCondition> Guards;
-    
+        public IReadOnlyList<GuardCondition> Guards => guards;
+        
+        [ShowInInspector, Sirenix.OdinInspector.ReadOnly, ListDrawerSettings(Expanded = true)]
+        readonly List<GuardCondition> guards;    
+        
         public GuardsMutable(params (string name, Func<bool> method)[] guards)
         {
-            this.Guards = new List<GuardCondition>(guards.Length);
+            this.guards = new List<GuardCondition>(guards.Length);
             foreach (var g in guards)
-                this.Guards.Add(new GuardCondition(g.name, g.method));
+                this.guards.Add(new GuardCondition(g.name, g.method));
         }
     
         public GuardsMutable AddGuard(GuardCondition guard)
         {
-            Guards.Add(guard);
+            guards.Add(guard);
             return this;
         }
     
         public void AddGuard(params GuardCondition[] guard)
-            => Guards.AddRange(guard);
+            => guards.AddRange(guard);
     
-        bool AtLeastOneBlocked
+        bool AnyBlocked
         {
             get
             {
@@ -39,18 +41,17 @@ namespace EMILtools.Core
             }
         }
     
-        public static implicit operator bool(GuardsMutable guards) => guards.AtLeastOneBlocked;
+        public static implicit operator bool(GuardsMutable guards) => guards.AnyBlocked;
 
     }
 
     /// <summary>
     /// Intended to be set one in initialization to easily see what bools interact with what guards
     /// </summary>
-    [Serializable]
     public readonly struct GuardsImmutable
     {
-        [ShowInInspector, ReadOnly, ListDrawerSettings(Expanded = true)] 
-        public GuardCondition[] Guards => guards;
+        [ShowInInspector, Sirenix.OdinInspector.ReadOnly, ListDrawerSettings(Expanded = true)] 
+        GuardCondition[] InspectGuards => guards;
         
         readonly GuardCondition[] guards;
 
@@ -63,7 +64,7 @@ namespace EMILtools.Core
             }
         }
         
-        bool AtLeastOneBlocked
+        bool AnyBlocked
         {
             get
             {
@@ -75,29 +76,6 @@ namespace EMILtools.Core
             }
         }
     
-        public static implicit operator bool(GuardsImmutable guards) => guards.AtLeastOneBlocked;
-
+        public static implicit operator bool(GuardsImmutable guards) => guards.AnyBlocked;
     }
-    
-    [Serializable]
-    public readonly struct GuardCondition
-    {
-        [ShowInInspector, ReadOnly]
-        public string Name { get; }
-
-        [ShowInInspector, ReadOnly]
-        public bool Blocked => check();
-
-        readonly Func<bool> check;
-
-        public GuardCondition(string name, Func<bool> check)
-        {
-            this.Name = name;
-            this.check = check;
-        }
-        
-        public static implicit operator bool(GuardCondition guards) => guards.Blocked;
-
-    }
-
 }

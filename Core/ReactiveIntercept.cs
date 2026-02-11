@@ -4,16 +4,28 @@ using Sirenix.OdinInspector;
 using UnityEngine;
 
 
+
 namespace EMILtools.Core
 {
+
+
+    /// <summary>
+    /// Reactions and Intercepts are Lazy Initialized
+    /// Food for thought: Don't make ALL of your Value-Types Reactive intercepts
+    ///                    Only the ones that actually need the behavior
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     [Serializable]
     [InlineProperty]
-    public struct ReactiveInterceptCore<T>
+    public class ReactiveIntercept<T>
     {
-        [SerializeField, HideLabel] internal T _value;
+        static readonly EqualityComparer<T> Comparer = EqualityComparer<T>.Default;
+
+
+        [SerializeField, HideLabel] T _value;
         
-        PersistentAction<T> _Reactions;
-        PersistentFunc<T, T> _Intercepts;
+        [NonSerialized] PersistentAction<T> _Reactions;
+        [NonSerialized] PersistentFunc<T, T> _Intercepts;
 
         public PersistentFunc<T, T> Intercepts
         {
@@ -38,20 +50,20 @@ namespace EMILtools.Core
             get => _value;
             set
             {
-                T processed = (Intercepts != null) ? Intercepts.ApplySequentially(value) : value;
-                if(EqualityComparer<T>.Default.Equals(_value, processed)) return;
+                T processed = (_Intercepts != null && _Intercepts.Count > 0) ? _Intercepts.ApplySequentially(value) : value;
+                if(Comparer.Equals(_value, processed)) return;
                 _value = processed;
-                Reactions?.Invoke(_value);
+                _Reactions?.Invoke(_value);
             }
         }
 
-        public ReactiveInterceptCore(T initial)
+        public ReactiveIntercept(T initial)
         {
             _value = initial;
             _Intercepts = null;
             _Reactions = null;
         }
-        public ReactiveInterceptCore(T initial,
+        public ReactiveIntercept(T initial,
             PersistentAction<T> reaction = null,
             PersistentFunc<T, T> intercept = null)
         {
@@ -59,90 +71,12 @@ namespace EMILtools.Core
             _Intercepts = intercept;
             _Reactions = reaction;
         }
-    }
-
-    public interface IReactiveIntercept<T>
-    {
-        T Value { get; set; }
-    }
-    
-    [Serializable]
-    [InlineProperty]
-    public struct ReactiveInterceptVT<T> : IReactiveIntercept<T>
-        where T : struct
-    {
-        [SerializeField, HideLabel] internal ReactiveInterceptCore<T> core;
-
-        public T Value
-        {
-            get => core.Value;
-            set => core.Value = value;
-        }
         
-        public ReactiveInterceptVT(T initial) => core = new ReactiveInterceptCore<T>(initial);
+#if UNITY_EDITOR
+        void OnValidate() => _Reactions?.Invoke(_value);
+#endif
 
-        public ReactiveInterceptVT(T initial,
-            PersistentAction<T> reaction = null,
-            PersistentFunc<T, T> intercept = null)
-        {
-            core = new ReactiveInterceptCore<T>(initial);
-            core.Reactions = reaction;
-            core.Intercepts = intercept;
-        }
-
-        // ----------------------------------------------------------------------------------
-        //                              No += Operator Overrides
-        // ----------------------------------------------------------------------------------
-        
-        public static implicit operator T(ReactiveInterceptVT<T> ri) => ri.Value;
-
+        public static implicit operator T(ReactiveIntercept<T> intercept) => intercept.Value;
     }
     
-    [Serializable]
-    [InlineProperty]
-    public struct ReactiveInterceptRT<T> : IReactiveIntercept<T>
-        where T : class
-    {
-        [SerializeField, HideLabel] internal ReactiveInterceptCore<T> core;
-         public T Value
-        {
-            get => core.Value;
-            set => core.Value = value;
-        }
-        public ReactiveInterceptRT(T initial) => core = new ReactiveInterceptCore<T>(initial);
-
-        
-        public static implicit operator T(ReactiveInterceptRT<T> ri) => ri.Value;
-        public static implicit operator ReactiveInterceptRT<T>(T val) => new ReactiveInterceptRT<T>(val);
-
-        // ----------------------------------------------------------------------------------
-        //                              Operator Overrides
-        //                      Func<T,T>: FUNCS += _ => Method();
-        //                      Action<T>: ACTION += _ => { Method(); };
-        // ----------------------------------------------------------------------------------
-        public static ReactiveInterceptRT<T> operator +(ReactiveInterceptRT<T> ri, Func<T,T> cb)
-        {
-            if(ri.core.Intercepts == null) ri.core.Intercepts = new PersistentFunc<T, T>();
-            ri.core.Intercepts.Add(cb);
-            return ri;
-        }
-        
-        public static ReactiveInterceptRT<T> operator -(ReactiveInterceptRT<T> ri, Func<T, T> cb)
-        {
-            ri.core.Intercepts?.Remove(cb);
-            return ri;
-        }
-        public static ReactiveInterceptRT<T> operator +(ReactiveInterceptRT<T> ri, Action<T> cb)
-        {
-            if (ri.core.Reactions == null) ri.core.Reactions = new PersistentAction<T>();
-            ri.core.Reactions.Add(cb);
-            return ri;
-        }
-
-        public static ReactiveInterceptRT<T> operator -(ReactiveInterceptRT<T> ri, Action<T> cb)
-        {
-            ri.core.Reactions?.Remove(cb);
-            return ri;
-        }
-    }
 }

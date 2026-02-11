@@ -28,7 +28,7 @@ namespace EMILtools.Core
     {
         Action<T, T2> _action = delegate { };
         
-        public void Invoke(T val1, T2 val2) => _action?.Invoke(val1, val2);
+        public void Invoke(T val1, T2 val2) => _action.Invoke(val1, val2);
         public PersistentAction<T, T2> Add(Action<T, T2> cb) { _action += cb; return this; }
         public PersistentAction<T, T2> Remove(Action<T, T2> cb) { _action -= cb; return this; }
         
@@ -43,7 +43,7 @@ namespace EMILtools.Core
     {
         Action<T> _action = delegate { };
         
-        public void Invoke(T value) => _action?.Invoke(value);
+        public void Invoke(T value) => _action.Invoke(value);
         public PersistentAction<T> Add(Action<T> cb) { _action += cb; return this; }
         public PersistentAction<T> Remove(Action<T> cb) { _action -= cb; return this; }
         
@@ -59,7 +59,7 @@ namespace EMILtools.Core
     {
         Action _action = delegate { };
 
-        public void Invoke() => _action?.Invoke();
+        public void Invoke() => _action.Invoke();
         public PersistentAction Add(Action cb) { _action += cb; return this; }
 
         public PersistentAction Remove(Action cb) { _action -= cb; return this; }
