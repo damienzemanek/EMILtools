@@ -13,9 +13,9 @@ A framework for modifying entity stats (Health, Speed, etc.).
 - struct based Modifiers to be memory-efficient that use the Decorator pattern to create special Modifiers like Timed Modifiers.
 
 #### Key Features
-- **Type-Safe Routing**: "Tags" (empty structs like `Speed` or `Health`) are used to identify stats. This means `typeof(TTag)` is your unique key—no more magic strings or typo-related bugs.
+- **Type-Safe Routing**: "Tags" (empty structs like `Speed` or `Health`) are used to identify stats. 
 - **SoC of Math and Tags**: Tags are completely seperate from modifiers, meaning you can tag your stats, once and don't have to deal with moving a container around to reference your stat.
-- **Zero-Boxing Heterogeneous Storage of Modifiers**: Using a JIT "Double Elision" resolve method, you can have a list of different modifier types (Adders, Multipliers, etc.) without ever hitting the heap. It’s pure value-type performance.
+- **Zero-Boxing Heterogeneous Storage of Modifiers**: Using a JIT "Double Elision" resolve method, you can have a list of different modifier types (Adders, Multipliers, etc.) without ever hitting the heap.
 - **Decorator Support**: You can wrap any modifier in timers, loggers, or custom logic seamlessly without touching the core math.
 
 #### Usage Example
@@ -26,20 +26,15 @@ public class Enemy : MonoBehaviour, IStatUser
     // The only variable that is implemented via IStatUser
     public Dictionary<Type, IStat> Stats { get; set; }
 
-    // Create your own custom stats using your own Stat Identifier Tags. For instace: Speed
     public Stat<float, Speed> speed = new(10f);
 
-
-    // Cache your stats in awake so you don't have any manual work, Its just plug and play to modify them
     void Awake() => this.CacheStats();
 
 
-    public void GetFrozen() 
+    public void Freeze() 
     {
-        // Initialize any modifiers
-        var halfspeed = new Mathmod(x => x * 0.5f); //[ Multiply speed by 0.5 for 3 seconds ]
+        var halfspeed = new Mathmod(x => x * 0.5f);  // Multiply speed by 0.5 for 3 seconds
 
-        // FluentAPI: Easily call decorators to add additional functionality to Modifiers
         this.Modify<Speed>(halfspeed).WithTimer(3f);
     }
 }
@@ -51,30 +46,28 @@ A centralized ticking engine designed to handle thousands of concurrent timers w
 
 #### Key Features
 - **Global Ticker**: A persistent, hidden `MonoBehaviour` that handles all `Update` and `FixedUpdate` cycles in one place.
-- **Leak-Safe**: Uses `ConditionalWeakTable` to prevent memory leaks. If your object gets destroyed, the timer system won't keep it alive.
+- **Leak-Safe**: Uses `ConditionalWeakTable` to prevent memory leaks. If your ITimerUser gets destroyed, the timer system won't keep it alive.
 - **Fast Removal**: Using a $O(1)$ removal logic (swap-and-pop) so cleaning up expired timers is practically free.
+- **Easy Unsubscribing**: You dont have to call Timer.Remove() on any of your previously added timers. ShutdownTimers() removes all of them for you in one swoop.
 
 #### Usage Example
 
 ```csharp
 public class Player : MonoBehaviour, ITimerUser 
 {
-    // Declare any timers
-    private CountdownTimer sprintTimer = new(5f);
+    private CountdownTimer speedBoost = new(5f);
 
     void Awake() 
     {
-        // Register with the global ticker (Update loop)
-        this.InitializeTimers((sprintTimer, isFixed: false));
-        
-        // Easy event chaining
-        this.Sub(sprintTimer.OnTimerStop, () => Debug.Log("Sprint Over!"));
+        this.InitializeTimers((speedBoost, isFixed: false));
+
+        speedBoost.OnTimerStart.Add(() => Debug.Log("Boost Started));
+        speedBoost.OnTimerStop.Add(() => Debug.Log("Boost Over"));
     }
 
-    // Customize your own callbacks
-    void OnEnable() => sprintTimer.Start();
+    void Start() => sprintTimer.Start();
 
-    // Easily unsubscribe everything at once with ShutdownTimers
+    // Unsubscribes ALL subscriptions
     void OnDestroy() => this.ShutdownTimers();
 }
 ```
