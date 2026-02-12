@@ -22,9 +22,11 @@ namespace EMILtools.Core
     /// - Fluent API Support: Enables the <c>.Sub().Sub()</c> chaining pattern by providing a consistent object to return and operate upon.
     /// </remarks>
     
+    public interface IPersistenAction { }
+
     
     [Serializable]
-    public sealed class PersistentAction<T, T2>
+    public sealed class PersistentAction<T, T2> : IPersistenAction
     {
         Action<T, T2> _action = delegate { };
         
@@ -39,7 +41,7 @@ namespace EMILtools.Core
     }
     
     [Serializable]
-    public sealed class PersistentAction<T>
+    public sealed class PersistentAction<T> : IPersistenAction
     {
         Action<T> _action = delegate { };
         
@@ -55,7 +57,7 @@ namespace EMILtools.Core
     /// Non-generic version for simple triggers
     /// </summary>
     [Serializable]
-    public sealed class PersistentAction
+    public sealed class PersistentAction : IPersistenAction
     {
         Action _action = delegate { };
 
@@ -66,6 +68,7 @@ namespace EMILtools.Core
         
         public int Count => _action.GetInvocationList().Length;
 
+        
         public void Add(Action[] cbs)
             { foreach (var cb in cbs) Add(cb); }
         

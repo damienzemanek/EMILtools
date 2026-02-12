@@ -8,6 +8,7 @@ using UnityEngine;
 namespace EMILtools.Core
 {
 
+    
 
     /// <summary>
     /// Reactions and Intercepts are Lazy Initialized
@@ -20,10 +21,9 @@ namespace EMILtools.Core
     public class ReactiveIntercept<T>
     {
         static readonly EqualityComparer<T> Comparer = EqualityComparer<T>.Default;
-
-
-        [SerializeField, HideLabel] T _value;
         
+        [SerializeField, HideLabel] T _value;
+        [NonSerialized] PersistentAction _SimpleReactions;
         [NonSerialized] PersistentAction<T> _Reactions;
         [NonSerialized] PersistentFunc<T, T> _Intercepts;
 
@@ -40,10 +40,19 @@ namespace EMILtools.Core
         {
             get
             {
-                if (_Reactions == null) _Reactions = new PersistentAction<T>();
+                if (_Reactions == null) _Reactions = new();
                 return _Reactions;
             }
             set => _Reactions = value;
+        }
+        public PersistentAction SimpleReactions
+        {
+            get
+            {
+                if (_SimpleReactions == null) _SimpleReactions = new PersistentAction();
+                return _SimpleReactions;
+            }
+            set => _SimpleReactions = value;
         }
         public T Value
         { 
@@ -54,6 +63,7 @@ namespace EMILtools.Core
                 if(Comparer.Equals(_value, processed)) return;
                 _value = processed;
                 _Reactions?.Invoke(_value);
+                _SimpleReactions?.Invoke();
             }
         }
 
@@ -62,21 +72,29 @@ namespace EMILtools.Core
             _value = initial;
             _Intercepts = null;
             _Reactions = null;
+            _SimpleReactions = null;
         }
         public ReactiveIntercept(T initial,
+            PersistentAction simpleReaction = null,
             PersistentAction<T> reaction = null,
             PersistentFunc<T, T> intercept = null)
         {
             _value = initial;
+            _SimpleReactions = simpleReaction;
             _Intercepts = intercept;
             _Reactions = reaction;
         }
         
 #if UNITY_EDITOR
-        void OnValidate() => _Reactions?.Invoke(_value);
+        void OnValidate()
+        {
+            _Reactions?.Invoke(_value);
+            _SimpleReactions?.Invoke();
+        }
 #endif
 
         public static implicit operator T(ReactiveIntercept<T> intercept) => intercept.Value;
+
     }
     
 }

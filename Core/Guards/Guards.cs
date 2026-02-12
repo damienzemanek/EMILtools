@@ -6,27 +6,35 @@ using UnityEngine;
 
 namespace EMILtools.Core
 {
-    public class GuardsMutable
+    public interface IGuarder { }
+    
+    public interface IActionGuarder : IGuarder
     {
-        public IReadOnlyList<GuardCondition> Guards => guards;
+        IGuardReaction CurrentOpenBranch { get; }
+        bool TryEarlyExit();
+    }
+    
+    public class GuarderMutable : IGuarder
+    {
+        public IReadOnlyList<Guard> Guards => guards;
         
         [ShowInInspector, Sirenix.OdinInspector.ReadOnly, ListDrawerSettings(Expanded = true)]
-        readonly List<GuardCondition> guards;    
+        readonly List<Guard> guards;    
         
-        public GuardsMutable(params (string name, Func<bool> method)[] guards)
+        public GuarderMutable(params (string name, Func<bool> method)[] guards)
         {
-            this.guards = new List<GuardCondition>(guards.Length);
+            this.guards = new List<Guard>(guards.Length);
             foreach (var g in guards)
-                this.guards.Add(new GuardCondition(g.name, g.method));
+                this.guards.Add(new Guard(g.name, g.method));
         }
     
-        public GuardsMutable AddGuard(GuardCondition guard)
+        public GuarderMutable AddGuard(Guard guard)
         {
             guards.Add(guard);
             return this;
         }
     
-        public void AddGuard(params GuardCondition[] guard)
+        public void AddGuard(params Guard[] guard)
             => guards.AddRange(guard);
     
         bool AnyBlocked
@@ -41,26 +49,26 @@ namespace EMILtools.Core
             }
         }
     
-        public static implicit operator bool(GuardsMutable guards) => guards.AnyBlocked;
+        public static implicit operator bool(GuarderMutable guarder) => guarder.AnyBlocked;
 
     }
 
     /// <summary>
     /// Intended to be set one in initialization to easily see what bools interact with what guards
     /// </summary>
-    public readonly struct GuardsImmutable
+    public readonly struct GuarderImmutable : IGuarder
     {
         [ShowInInspector, Sirenix.OdinInspector.ReadOnly, ListDrawerSettings(Expanded = true)] 
-        GuardCondition[] InspectGuards => guards;
+        Guard[] InspectGuards => guards;
         
-        readonly GuardCondition[] guards;
+        readonly Guard[] guards;
 
-        public GuardsImmutable(params (string name, Func<bool> method)[] guards)
+        public GuarderImmutable(params (string name, Func<bool> method)[] guards)
         {
-            this.guards = new GuardCondition[guards.Length];
+            this.guards = new Guard[guards.Length];
             for (int i = 0; i < guards.Length; i++)
             {
-                this.guards[i] = new GuardCondition(guards[i].name, guards[i].method);
+                this.guards[i] = new Guard(guards[i].name, guards[i].method);
             }
         }
         
@@ -76,6 +84,6 @@ namespace EMILtools.Core
             }
         }
     
-        public static implicit operator bool(GuardsImmutable guards) => guards.AnyBlocked;
+        public static implicit operator bool(GuarderImmutable guarder) => guarder.AnyBlocked;
     }
 }
