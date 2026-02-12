@@ -1,6 +1,9 @@
 ### EMILtools: 
 
 Architectural system additions for Unity 6.
+1. "Signals" Modifier System
+2. Timers System
+3. ReactiveIntercept
 
 ### Installation
 
@@ -72,3 +75,30 @@ public class Player : MonoBehaviour, ITimerUser
 }
 ```
 
+### Reactive Intercepts (RI)
+
+A variable wrapper that Intercepts changes made to a variable, and allows for Reactions when the variable is changed.
+
+#### Key Features
+- **Reactions**: 2 PersistentActions are Lazy Initialized in each ReactiveIntercept, that are Invoked when the variable is changed, (1) PersistentAction and (1) PersistentAction<T>
+- **Intercepts**: Every ReactiveIntercepts holds Lazy Initializes a Func<T,T> that "Intercepts" the setter and mutates its changes. For example you can add Clamps really easy this way
+
+#### Usage Example
+```csharp
+public class Player : MonoBehaviour, ITimerUser 
+{
+    public ReactiveIntercept<bool> isGrounded;
+    public ReactiveIntercept<float> maxSpeed;
+
+    void Awake()
+    {
+        isGrounded.SimpleReactions.Add(LandAnimation);
+        isGrounded.Reactions.Add(CheckIfStillInAir);
+        maxSpeed.Intercepts.Add(x => Mathf.Clamp(x, min: 0, max: 50));
+    }
+
+    void LandAnimation() { ... }
+    void CheckIfStillInAir(bool val) { ... }
+
+}
+```
