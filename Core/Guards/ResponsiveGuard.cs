@@ -11,7 +11,7 @@ public abstract class ActionGuarder : IActionGuarder
 {
     public static readonly string NONE = "CAN ACCESS";
     public static readonly IGuardReaction NoneResponsiveGuardCondition = new LazyActionGuard(NONE);
-    public abstract IGuardReaction CurrentOpenBranch { get; }
+    public abstract IGuardReaction CurrentBlocker { get; }
     public abstract bool TryEarlyExit();
 
     public bool TryEarlyExit(IEnumerable<IGuardReaction> guards)
@@ -32,7 +32,7 @@ public abstract class ActionGuarder : IActionGuarder
 
 public class ActionGuarderImmutable : ActionGuarder, IActionGuarder
 {
-    [ShowInInspector, PropertyOrder(-1)] public override IGuardReaction CurrentOpenBranch
+    [ShowInInspector, PropertyOrder(-1)] public override IGuardReaction CurrentBlocker
     {
         get
         {
@@ -53,7 +53,7 @@ public class ActionGuarderImmutable : ActionGuarder, IActionGuarder
 
 public class ActionGuarderMutable : ActionGuarder, IActionGuarder
 {
-    [ShowInInspector, PropertyOrder(-1)] public override IGuardReaction CurrentOpenBranch
+    [ShowInInspector, PropertyOrder(-1)] public override IGuardReaction CurrentBlocker
     {
         get
         {

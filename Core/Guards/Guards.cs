@@ -10,7 +10,7 @@ namespace EMILtools.Core
     
     public interface IActionGuarder : IGuarder
     {
-        IGuardReaction CurrentOpenBranch { get; }
+        IGuardReaction CurrentBlocker { get; }
         bool TryEarlyExit();
     }
     
