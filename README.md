@@ -109,3 +109,171 @@ public class Player : MonoBehaviour
 
 }
 ```
+
+### Guarder System
+
+Lightweight composable early exit framework for managing logic flow.
+Declaritively block execution and optional branch to other functionality
+
+
+#### Key Features
+- **Declarative Early Exit**: Replace nestied if trees with readable guard chains
+- **Inspector Debugging**: See exactly what condition is blocking execution
+- **Branching Support**: Block and respond seemlessly
+- **Zero hidden allocations after Init**: (Immutable Variants)
+- **Separation of Concerns (SoC)**: Separates (1) Condition Evaluation, (2) Execution Flow, (3) Branching Logic
+
+#### Usage Example
+
+**Guard Condition Types**
+*1. Guard*:
+Simple Condition Wrapper
+- Wrapps a Func<bool>
+```csharp
+new Guard("IsDead", () => health <= 0);
+```
+*2. Action Guard*:
+Condition + branching logic
+- Optionally invoke an action when blocking
+```csharp
+new ActionGuard(
+    () => stamina <= 0,
+    () => Debug.Log("Too Exhausted"),
+    "No Stamina",
+    "Show Exhausted Message"
+);
+```
+*3. Lazy Guard*:
+Reactive Guard
+- Subscribes to an already established PersistentAction
+- Only re-evalutes when the observed value changes
+- Inteded to subscribe using ReactiveIntercept PersistentActions
+```csharp
+new LazyGuard(
+    "IsGrounded",
+    isGrounded.Reactions,
+    () => !isGrounded.Value
+);
+```
+*4. Lazy Action Guard*:
+Conditon + branching logic
+- Subscribe to an already established PersistentAction
+- Only re-evaluates when the observed value changes
+- Inteded to subscribe using ReactiveIntercept PersistentActions
+```csharp
+new LazyActionGuard(
+    isGrounded.Reactions,
+    () => stamina <= 0,
+    () => Debug.Log("Too Exhausted"),
+    "No Stamina",
+    "Show Exhausted Message"
+);
+```
+
+**Guarder Types**
+Guarders group multiple guards and evaluate them linearly
+- Inspector Friendly, optionally name/tag conditions and reactions
+
+====================== LAYER 1 - PURE BOOLEAN EVALUATION ======================
+
+*1. GuarderMutable*:
+Runtime editable guard list
+- Backed by List<T>
+- Add guards dynamically
+```csharp
+var guards = new GuarderMutable(
+    ("Dead", () => health <= 0),
+    ("Stunned", () => isStunned)
+);
+
+if (guards) return;
+```
+
+*2. Guarder Immutable*:
+Fixed guard array
+- Alloc free after construction
+- Ideal for initialization only setups
+```csharp
+var guards = new GuarderImmutable(
+    ("Dead", () => health <= 0),
+    ("Stunned", () => isStunned)
+);
+
+if (guards) return;
+```
+
+====================== LAYER 2 - LAZY OBSERVATION BOOLEAN EVALUATION ======================
+
+*1. LazyGuarderMutable*:
+Lazy version of GuarderMutable
+- Pass in a PersistentAction to subscribe to the re-evaluate when the value changes
+```csharp
+var guards = new LazyGuarderMutable(
+    ("Dead", healthChanged, () => health <= 0),
+    ("Stunned", stunChanged, () => isStunned)
+);
+
+if (guards) return;
+```
+
+*2. Guarder Immutable*:
+Lazy version of GuarderImmutable
+- Pass in a PersistentAction to subscribe to the re-evaluate when the value changes
+```csharp
+var guards = new LazyGuarderImmutable(
+    ("Dead", healthChanged, () => health <= 0),
+    ("Stunned", stunChanged, () => isStunned)
+);
+
+if (guards) return;
+```
+
+====================== LAYER 2 - BRANCHING & LAZY EVALUATION BOOLEAN EVALUATION ======================
+
+
+*1. Action Guarder Mutable*:
+Branching Guard chain (runtime editable)
+- Backed by List<IGuardReaction>
+- Supports both ActionGuard and LazyActionGuard
+```csharp
+var guards = new ActionGuarderMutable(
+    new ActionGuard(
+        () => health <= 0,
+        () => Debug.Log("Dead"),
+        "Is Dead",
+        "Notify Dead"
+    ),
+    new ActionGuard(
+        () => isStunned,
+        () => Debug.Log("Stunned"),
+        "Is Stunned",
+        "Notify Stunned"
+    )
+);
+
+if (guards) return;
+```
+
+*2. Action Guarder Immutable*:
+Branching guard chain (fixed after construction)
+- Backed by IGuardReaction[]
+- Alloc-free after initialization
+```csharp
+var guards = new ActionGuarderImmutable(
+    new ActionGuard(
+        () => health <= 0,
+        () => Debug.Log("Dead"),
+        "Is Dead",
+        "Notify Dead"
+    ),
+    new ActionGuard(
+        () => isStunned,
+        () => Debug.Log("Stunned"),
+        "Is Stunned",
+        "Notify Stunned"
+    )
+);
+
+if (guards) return;
+```
+
