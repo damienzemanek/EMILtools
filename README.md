@@ -16,13 +16,20 @@ A framework for modifying entity stats (Health, Speed, etc.).
 - struct based Modifiers to be memory-efficient that use the Decorator pattern to create special Modifiers like Timed Modifiers.
 
 #### Key Features
-- **Type-Safe Routing**: "Tags" (empty structs like `Speed` or `Health`) are used to identify stats. 
+- **Type-Safe Routing**: "Tags" (empty structs like `Speed` or `Health`) are used to identify stats. These can be re-used on different IStatUsers
 - **SoC of Math and Tags**: Tags are completely seperate from modifiers, meaning you can tag your stats, once and don't have to deal with moving a container around to reference your stat.
 - **Zero-Boxing Heterogeneous Storage of Modifiers**: Using a JIT "Double Elision" resolve method, you can have a list of different modifier types (Adders, Multipliers, etc.) without ever hitting the heap.
 - **Decorator Support**: You can wrap any modifier in timers, loggers, or custom logic seamlessly without touching the core math.
 
 #### Usage Example
 
+Setup your Stat Tags 
+```csharp
+public struct Speed : IStatTag { }
+public struct Healthy : IStatTag { }
+```
+
+IStatUser Implementation
 ```csharp
 public class Enemy : MonoBehaviour, IStatUser 
 {
