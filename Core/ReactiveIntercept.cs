@@ -67,6 +67,14 @@ namespace EMILtools.Core
             }
         }
 
+        public ReactiveIntercept()
+        {
+            _value = default;
+            _Intercepts = null;
+            _Reactions = null;
+            _SimpleReactions = null;
+        }
+
         public ReactiveIntercept(T initial)
         {
             _value = initial;
@@ -94,6 +102,8 @@ namespace EMILtools.Core
 #endif
 
         public static implicit operator T(ReactiveIntercept<T> intercept) => intercept.Value;
+        public static implicit operator ReactiveIntercept<T>(T v) => new ReactiveIntercept<T>(v);
+
 
     }
     
