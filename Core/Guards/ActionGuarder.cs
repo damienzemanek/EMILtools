@@ -9,7 +9,7 @@ using UnityEngine;
 namespace EMILtools.Core
 {
     [Serializable]
-    public readonly struct ActionGuard : IGuardAction
+    public class ActionGuard : IGuardAction
     {
 
         [HorizontalGroup("Top", 250)] [ShowInInspector, ReadOnly] public string If { get; }
@@ -47,6 +47,15 @@ namespace EMILtools.Core
             Then = "return";
             If ??= "null-check";
         }
+        
+        public ActionGuard(Func<bool> @if)
+        {
+            observed = @if;
+            this.then = null;
+
+            If = @if?.Method.Name;
+            Then = "return";
+        }
 
         public ActionGuard(Func<bool> @if, Action then)
         {
@@ -63,7 +72,7 @@ namespace EMILtools.Core
     
     
     [Serializable]
-    public readonly struct LazyActionGuard<TLazyFunc> : IGuardAction
+    public class LazyActionGuard<TLazyFunc> : IGuardAction
         where TLazyFunc : class, ILazyFunc<bool>, new()
     {
         [HorizontalGroup("Top", 250), PropertyOrder(-1)] [ShowInInspector, ReadOnly]     public string If { get; }
@@ -101,6 +110,24 @@ namespace EMILtools.Core
 
             If = @if?.Method.Name ?? "null-check";
             Then = then != null ? then.Method.Name : "return";
+        }
+        
+        public LazyActionGuard(PersistentAction onChanged, Func<bool> @if)
+        {
+            observed = new LazyFuncFactory<TLazyFunc, bool>().CreateLazyFuncBool(onChanged, @if);
+            this.then = null;
+
+            If = @if?.Method.Name ?? "null-check";
+            Then = "return";
+        }
+        
+        public LazyActionGuard(PersistentAction onChanged, Func<bool> @if, string ifName)
+        {
+            observed = new LazyFuncFactory<TLazyFunc, bool>().CreateLazyFuncBool(onChanged, @if);
+            this.then = null;
+
+            If = ifName;
+            Then = "return";
         }
         
         public LazyActionGuard(string CANACCESS = "CAN ACCESS")

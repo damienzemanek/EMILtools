@@ -50,6 +50,7 @@ namespace EMILtools.Core
         public PersistentAction<T> Remove(Action<T> cb) { _action -= cb; return this; }
         
         public int Count => _action.GetInvocationList().Length;
+        public void PrintInvokeListNames() => Debug.Log("Invoking PersistentAction with " + Count + " subscribers: " + string.Join(", NAME >>>>>>>>>>>>>> ", _action.GetInvocationList().Select(d => d.Method.Name)));
 
     }
 

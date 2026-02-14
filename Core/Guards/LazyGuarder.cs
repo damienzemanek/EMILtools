@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
+using Sirenix.Utilities;
 
 namespace EMILtools.Core
 {
@@ -14,10 +15,10 @@ namespace EMILtools.Core
 
         readonly LazyFuncLite<bool> observed;
         
-        public LazyGuard(string name, PersistentAction observedOnChanged,  Func<bool> observed)
+        public LazyGuard(PersistentAction observedOnChanged,  Func<bool> @if, string ifName)
         {
-            If = name;
-            this.observed = new LazyFuncLite<bool>(observedOnChanged, observed);
+            If = ifName;
+            observed = new LazyFuncLite<bool>(observedOnChanged, @if);
         }
         
         public static implicit operator bool(LazyGuard guards) => guards.Blocked;
@@ -32,11 +33,10 @@ namespace EMILtools.Core
         [ShowInInspector, Sirenix.OdinInspector.ReadOnly, ListDrawerSettings(Expanded = true)]
         readonly List<LazyGuard> guards;
     
-        public LazyGuarderMutable(params (string name, PersistentAction onObservedChanged, Func<bool> observed)[] guards)
+        public LazyGuarderMutable(params LazyGuard[] guards)
         {
             this.guards = new List<LazyGuard>(guards.Length);
-            foreach (var g in guards)
-                this.guards.Add(new LazyGuard(g.name, g.onObservedChanged, g.observed));
+            this.guards.AddRange(guards);
         }
     
         public LazyGuarderMutable AddGuard(LazyGuard guard)
@@ -74,13 +74,10 @@ namespace EMILtools.Core
         
         readonly LazyGuard[] guards;
 
-        public LazyGuarderImmutable(params (string name, PersistentAction onObservedChanged, Func<bool> observed)[] guards)
+        public LazyGuarderImmutable(params LazyGuard[] guards)
         {
             this.guards = new LazyGuard[guards.Length];
-            for (int i = 0; i < guards.Length; i++)
-            {
-                this.guards[i] = new LazyGuard(guards[i].name, guards[i].onObservedChanged, guards[i].observed);
-            }
+            this.guards.AddRange(guards);
         }
         
         bool AnyBlocked

@@ -102,7 +102,6 @@ namespace EMILtools.Core
 #endif
 
         public static implicit operator T(ReactiveIntercept<T> intercept) => intercept.Value;
-        public static implicit operator ReactiveIntercept<T>(T v) => new ReactiveIntercept<T>(v);
 
 
     }

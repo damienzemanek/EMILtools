@@ -68,7 +68,7 @@ namespace EMILtools.Extensions
             int indx = UnityEngine.Random.Range(0, ts.Count);
             T rand = ts[indx];
 
-            ts[indx] = ts[NumEX.LAST];
+            ts[indx] = ts[NumEX.LastIndex];
             ts.RemoveLast();
             return rand;
         }

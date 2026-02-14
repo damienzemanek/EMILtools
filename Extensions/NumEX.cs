@@ -5,9 +5,9 @@ namespace EMILtools.Extensions
 {
     public static class NumEX
     {
-        public const float ZEROF = 0f;
-        public static readonly Index LAST = ^1;
-
+        public const float ZeroF = 0f;
+        public static readonly Index LastIndex = ^1;
+        private const float NinetyF = 90f;
 
         /// <summary>
         /// Ensure Tolerance is between 0 and 1
