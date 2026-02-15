@@ -1,6 +1,7 @@
 ﻿using System;
 using EMILtools.Core;
 using EMILtools.Signals;
+using Sirenix.OdinInspector;
 
 namespace EMILtools.Timers
 {
@@ -25,6 +26,10 @@ namespace EMILtools.Timers
         public void Reset() => Time = initialTime;
         public void Restart() { Reset(); Start(); }
         public void Reset(float newInitialTime) => Time = newInitialTime;
+        
+        [Button] void SetTimeTo(float val) => Time = val;
+        [Button] void StartAgain() => Start();
+
     }
 }
 
