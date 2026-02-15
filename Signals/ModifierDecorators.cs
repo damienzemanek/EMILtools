@@ -168,7 +168,7 @@ namespace EMILtools.Signals
         {
             removable = false;
             this.timer = timer;
-            this.InitializeTimers((timer, false));
+            this.InitTimers((timer, false));
             this.Sub(timer.OnTimerStop, RemoveModifier);
             
             OnAdd += timer.Start;

@@ -59,26 +59,31 @@ namespace EMILtools.Timers
             /// <param name="itimeruser"></param>
             /// <param name="initialize"></param>
             /// <returns></returns>
-            public static ITimerUser InitializeTimers(this ITimerUser itimeruser, params (Timer timer, bool isFixed)[] initialize)
+            public static ITimerUser InitTimers(this ITimerUser itimeruser, params (Timer timer, bool isFixed)[] initialize)
             {
                 if(initialize == null || initialize.Length == 0) return itimeruser;
                 
-                //Add the user from the registry
-                var user = registry.GetOrCreateValue(itimeruser);
                 foreach (var (timer, isFixed) in initialize)
+                    itimeruser.InitTimer(timer, isFixed);
+                
+                return itimeruser;
+            }
+
+            public static ITimerUser InitTimer(this ITimerUser itimeruser, Timer timer, bool isFixed)
+            {
+                var user = registry.GetOrCreateValue(itimeruser);
+                // Add the timer to the user's correct timer list, so ShutdownTimers() knows which timer to remove from the buffer
+                if (isFixed)
                 {
-                    // Add the timer to the user's correct timer list, so ShutdownTimers() knows which timer to remove from the buffer
-                    if (isFixed)
-                    {
-                        user.FixedTimers.Add(timer);
-                        fixedBuffer.Add(timer);
-                    }
-                    else
-                    {
-                        user.UpdateTimers.Add(timer);
-                        updateBuffer.Add(timer);
-                    }
+                    user.FixedTimers.Add(timer);
+                    fixedBuffer.Add(timer);
                 }
+                else
+                {
+                    user.UpdateTimers.Add(timer);
+                    updateBuffer.Add(timer);
+                }
+
                 return itimeruser;
             }
             
