@@ -45,5 +45,5 @@ public class InterfaceReference<TInterface, TObject> where TObject : Object wher
     public InterfaceReference(TInterface newValue) => Value = newValue;
 }
 
-[SerializeField]
+[Serializable]
 public class InterfaceReference<TInterface> : InterfaceReference<TInterface, Object> where TInterface : class { }
