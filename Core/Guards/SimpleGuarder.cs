@@ -1,19 +1,14 @@
 using System;
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
-using Unity.Collections;
 using UnityEngine;
 
 namespace EMILtools.Core
 {
     public readonly struct SimpleGuard 
     {
-        [ShowInInspector, Sirenix.OdinInspector.ReadOnly]
-        public string If { get; }
-
-        [ShowInInspector, Sirenix.OdinInspector.ReadOnly]
-        public bool Blocked => observed();
-
+        [ShowInInspector, ReadOnly] public string If { get; }
+        [ShowInInspector, ReadOnly] public bool Blocked => observed();
         readonly Func<bool> observed;
 
         public SimpleGuard(string name, Func<bool> observed)
@@ -29,9 +24,7 @@ namespace EMILtools.Core
     public class SimpleGuarderMutable : IGuarder
     {
         public IReadOnlyList<SimpleGuard> Guards => guards;
-        
-        [ShowInInspector, Sirenix.OdinInspector.ReadOnly, ListDrawerSettings(Expanded = true)]
-        readonly List<SimpleGuard> guards;    
+        [ShowInInspector, ReadOnly, ListDrawerSettings(Expanded = true)] readonly List<SimpleGuard> guards;    
         
         public SimpleGuarderMutable(params (string name, Func<bool> method)[] guards)
         {
@@ -49,19 +42,12 @@ namespace EMILtools.Core
         public void AddGuard(params SimpleGuard[] guard)
             => guards.AddRange(guard);
     
-        bool AnyBlocked
+        public bool TryEarlyExit()
         {
-            get
-            {
-                for (int i = 0; i < Guards.Count; i++)
-                {
-                    if (Guards[i].Blocked) return true;
-                }
-                return false;
-            }
+            for (int i = 0; i < Guards.Count; i++)
+                if (Guards[i].Blocked) return true;
+            return false;
         }
-    
-        public static implicit operator bool(SimpleGuarderMutable simpleGuarder) => simpleGuarder.AnyBlocked;
 
     }
 
@@ -70,9 +56,7 @@ namespace EMILtools.Core
     /// </summary>
     public readonly struct SimpleGuarderImmutable : IGuarder
     {
-        [ShowInInspector, Sirenix.OdinInspector.ReadOnly, ListDrawerSettings(Expanded = true)] 
-        SimpleGuard[] InspectGuards => guards;
-        
+        [ShowInInspector, ReadOnly, ListDrawerSettings(Expanded = true)] SimpleGuard[] InspectGuards => guards;
         readonly SimpleGuard[] guards;
 
         public SimpleGuarderImmutable(params (string name, Func<bool> method)[] guards)
@@ -84,18 +68,11 @@ namespace EMILtools.Core
             }
         }
         
-        bool AnyBlocked
+        public bool TryEarlyExit()
         {
-            get
-            {
-                for (int i = 0; i < guards.Length; i++)
-                {
-                    if (guards[i].Blocked) return true;
-                }
-                return false;
-            }
+            for (int i = 0; i < guards.Length; i++)
+                if (guards[i].Blocked) return true;
+            return false;
         }
-    
-        public static implicit operator bool(SimpleGuarderImmutable simpleGuarder) => simpleGuarder.AnyBlocked;
     }
 }
