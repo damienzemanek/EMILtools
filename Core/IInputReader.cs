@@ -12,6 +12,7 @@ public interface IInputReaderSubordinate<TInputMap, TSubordinateEnum> : IInputRe
     where TSubordinateEnum : Enum
     where TInputMap : class, IInputMap, new()
 {
+    public TInputMap Input { get; }
     public IInputSubordinate<TInputMap, TSubordinateEnum> subordinate { get; set; }
     
 }
