@@ -43,7 +43,13 @@ public class InterfaceReference<TInterface, TObject> where TObject : Object wher
     
     // Ctor TInterface
     public InterfaceReference(TInterface newValue) => Value = newValue;
+    
+    public static implicit operator TInterface(InterfaceReference<TInterface, TObject> rv) => rv.Value;
 }
 
 [Serializable]
-public class InterfaceReference<TInterface> : InterfaceReference<TInterface, Object> where TInterface : class { }
+public class InterfaceReference<TInterface> : InterfaceReference<TInterface, Object> where TInterface : class
+{
+    public InterfaceReference() { }
+    public InterfaceReference(TInterface newValue) : base(newValue) { }
+}

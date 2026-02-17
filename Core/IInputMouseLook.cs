@@ -8,7 +8,3 @@ public interface IInputMouseLook
 {
     public Vector2 mouse { get; set; }
 }
-
-[Serializable]
-public class IInputMouseLookReference : InterfaceReference<IInputMouseLook, Object> { }
-
