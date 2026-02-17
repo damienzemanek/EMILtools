@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-public interface IInputReader<TInputMap>
+public interface IInputReader<TInputMap> : IInitializable
     where TInputMap : class, IInputMap, new()
 {
     
