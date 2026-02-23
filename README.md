@@ -4,6 +4,7 @@ Architectural system additions for Unity 6.
 1. "Signals" Modifier System
 2. Timers System
 3. ReactiveIntercept
+4. Guards System
 
 ### Installation
 
