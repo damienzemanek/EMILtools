@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
-using Sirenix.Utilities;
 
 namespace EMILtools.Core
 {
@@ -77,7 +76,7 @@ namespace EMILtools.Core
         public LazyGuarderImmutable(params LazyGuard[] guards)
         {
             this.guards = new LazyGuard[guards.Length];
-            this.guards.AddRange(guards);
+            //this.guards.AddRange(guards);
         }
         
         bool AnyBlocked

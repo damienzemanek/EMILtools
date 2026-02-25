@@ -1,27 +1,51 @@
-using System;
+﻿using System;
 using System.Linq;
+using EMILtools.Timers;
 using UnityEngine;
 
 namespace EMILtools.Core
 {
-    public interface IPersistentAction<in TDelegate, out TPersistentCRTP> : IPersistentDelegate
-        where TDelegate : Delegate
-        where TPersistentCRTP : IPersistentAction<TDelegate, TPersistentCRTP>
+    /// <summary>
+    /// A persistent container for multicast delegates that ensures reference stability across the utilizer's lifecycle.
+    /// </summary>
+    /// <remarks>
+    /// Purpose:
+    /// - Reference Stability: Standard C# events/actions are immutable; every subscription (+=) re-assigns the reference. 
+    ///   This class provides a constant heap-allocated container so that internal tracking systems  
+    ///   can maintain a permanent link to the event without needing to re-bind every time the underlying delegate is modified.
+    /// - Lifecycle Decoupling: Allows users to manage subscriptions safely without knowing the internal state of the instance.
+    /// - Null-Safety: Encapsulates the invocation logic with a default empty delegate to prevent NullReferenceExceptions during high-frequency ticks.
+    /// 
+    /// Use Cases:
+    /// - Centralized Cleanup: Essential for <see cref="TimerUtility.ShutdownTimers"/>; it allows the utility to iterate through a list 
+    ///   of Hooks and call Unsubscribe on a stable target, even if other objects have subscribed/unsubscribed in the meantime.
+    /// - Fluent API Support: Enables the <c>.Sub().Sub()</c> chaining pattern by providing a consistent object to return and operate upon.
+    /// </remarks>
+    ///
+    /// 
+
+    public interface IPersistentDelegate
     {
-        TPersistentCRTP Add(TDelegate cb);
-        TPersistentCRTP Remove(TDelegate cb);
+        void API_Add(Delegate cb);
+        void API_Remove(Delegate cb);
+    }
+    
+    public interface IPersistentAction<in TDelegate> : IPersistentDelegate
+        where TDelegate : Delegate
+    {
+        void Add(TDelegate cb);
+        void Remove(TDelegate cb);
         int Count { get; }
         void PrintInvokeListNames();
     }
-
     
-    [Serializable]
-    public sealed class PersistentAction<T, T2> : IPersistentAction<Action<T,T2>, PersistentAction<T, T2>>
+     [Serializable]
+    public sealed class PersistentActionNonCRTP<T, T2> : IPersistentAction<Action<T,T2>>
     {
         [NonSerialized] Action<T, T2> _action = delegate { };
         public void Invoke(T val1, T2 val2) => _action.Invoke(val1, val2);
-        public PersistentAction<T, T2> Add(Action<T, T2> cb) { _action += cb; return this; }
-        public PersistentAction<T, T2> Remove(Action<T, T2> cb) { _action -= cb; return this; }
+        public void Add(Action<T, T2> cb) => _action += cb; 
+        public void Remove(Action<T, T2> cb) => _action -= cb; 
         public int Count => _action.GetInvocationList().Length;
 
         public void PrintInvokeListNames()
@@ -36,11 +60,11 @@ namespace EMILtools.Core
     }
     
     [Serializable]
-    public sealed class PersistentAction<T> : IPersistentAction<Action<T>, PersistentAction<T>>
+    public sealed class PersistentActionNonCRTP<T> : IPersistentAction<Action<T>>
     {
         [NonSerialized] Action<T> _action = delegate { };
-        public PersistentAction<T> Add(Action<T> cb) { _action += cb; return this; }
-        public PersistentAction<T> Remove(Action<T> cb) { _action -= cb; return this; }
+        public void Add(Action<T> cb)  => _action += cb;
+        public void Remove(Action<T> cb) => _action -= cb;
         public void Invoke(T value) => _action.Invoke(value);
         public int Count => _action.GetInvocationList().Length;
         public void PrintInvokeListNames()
@@ -51,7 +75,6 @@ namespace EMILtools.Core
         }
 
         public void API_Add(Delegate cb) => Add((Action<T>)cb);
-
         public void API_Remove(Delegate cb) => Remove((Action<T>)cb);
     }
 
@@ -59,12 +82,12 @@ namespace EMILtools.Core
     /// Non-generic version for simple triggers
     /// </summary>
     [Serializable]
-    public sealed class PersistentAction : IPersistentAction<Action, PersistentAction>  
+    public sealed class PersistentActionNonCRTP : IPersistentAction<Action>  
     {
         [NonSerialized] Action _action = delegate { };
         public void Invoke() => _action.Invoke();
-        public PersistentAction Add(Action cb) { _action += cb; return this; }
-        public PersistentAction Remove(Action cb) { _action -= cb; return this; }
+        public void Add(Action cb) => _action += cb; 
+        public void Remove(Action cb) => _action -= cb; 
         
         public int Count => _action.GetInvocationList().Length;
         public void PrintInvokeListNames()
