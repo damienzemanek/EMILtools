@@ -83,10 +83,13 @@ namespace EMILtools.Timers
 
         public void TryTick(float deltaTime)
         {
-            //Debug.Log("Trying tick");
             if (!isRunning) return;
-            if(Time > initialTime) Time = initialTime; // Clamp Time to initialTime
-            // this.Log($"Ticking, Prog: {Progress}");
+            if (Time > initialTime)
+            {
+                Debug.Log("Rest to initial time: " + initialTime.val);
+                Time = initialTime; // Clamp Time to initialTime
+            }
+            //this.Log($"Ticking, Prog: {Progress}");
             TickImplementation(deltaTime);
             OnTimerTick.Invoke();
             //Debug.Log("completed tick");
