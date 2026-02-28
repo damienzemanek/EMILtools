@@ -68,7 +68,9 @@ namespace EMILtools.Core
     /// </summary>
     public readonly struct LazyGuarderImmutable : IGuarder
     {
+#pragma warning disable CS0618 // Type or member is obsolete
         [ShowInInspector, Sirenix.OdinInspector.ReadOnly, ListDrawerSettings(Expanded = true)] 
+#pragma warning restore CS0618 // Type or member is obsolete
         LazyGuard[] InspectGuards => guards;
         
         readonly LazyGuard[] guards;

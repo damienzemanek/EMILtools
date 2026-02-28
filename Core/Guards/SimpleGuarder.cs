@@ -24,7 +24,9 @@ namespace EMILtools.Core
     public class SimpleGuarderMutable : IGuarder
     {
         public IReadOnlyList<SimpleGuard> Guards => guards;
+#pragma warning disable CS0618 // Type or member is obsolete
         [ShowInInspector, ReadOnly, ListDrawerSettings(Expanded = true)] readonly List<SimpleGuard> guards;    
+#pragma warning restore CS0618 // Type or member is obsolete
         
         public SimpleGuarderMutable(params (string name, Func<bool> method)[] guards)
         {
