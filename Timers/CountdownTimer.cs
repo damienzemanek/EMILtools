@@ -1,5 +1,4 @@
 ﻿using System;
-using EMILtools.Core;
 using Sirenix.OdinInspector;
 
 namespace EMILtools.Timers
