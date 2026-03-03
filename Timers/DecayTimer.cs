@@ -10,6 +10,7 @@ namespace EMILtools.Timers
     {
         [ShowInInspector] Ref<float> decayMult;
 
+        [Button]
         public DecayTimer(float initialValue, float _decayMult) : base(initialValue)
          => decayMult = _decayMult;
         public DecayTimer(float initialValue, Ref<float> _decayMult) : base(initialValue)
